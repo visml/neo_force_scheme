@@ -74,5 +74,29 @@ plt.grid(linestyle='dotted')
 plt.show()
 ```
 
+### Plot with plotly
+```Python
+import numpy as np
+from neo_force_scheme import NeoForceScheme
+import plotly.graph_objects as go
+
+dataset = np.random.random((100, 100)) # Some dataset without labels
+labels = np.random.random(100) # Per-row labels
+
+nfs = NeoForceScheme(cuda=True)
+projection = nfs.fit_transform(dataset)
+
+fig = go.Figure(data=go.Scatter(x=projection[:, 0],
+                                y=projection[:, 1],
+                                mode='markers',
+                                marker=dict(
+                                size=16,
+                                color=np.random.randn(100),
+                                colorscale='Viridis',
+                                showscale=True)
+                                ))
+fig.show()
+```
+
 ## API
 More information can be found at [our documentation page](#)
