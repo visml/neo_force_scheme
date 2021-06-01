@@ -11,8 +11,8 @@ pip install git+https://github.com/visml/neo_force_scheme@0.0.1
 
 ## QuickStart
 
-You can find examples for [simple data](./examples/mammals_cpu.py), [large data with cpu](./examples/mammmals_large_cpu.py),
-and [large data with gpu](./examples/mammmals_large_gpu.py)
+You can find examples for [simple data](./examples/mammals_cpu.py), [large data with cpu](./examples/mammals_large_cpu.py),
+and [large data with gpu](./examples/mammals_large_gpu.py)
 
 To run the projection:
 ```python
