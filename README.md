@@ -2,7 +2,7 @@
 
 A new library for extended and performance-focused ForceScheme implementation.
 
-## Instalation
+## Installation
 Until we set up a pypi package, you can test the library with
 
 ```
