@@ -2,6 +2,13 @@
 
 A new library for extended and performance-focused ForceScheme implementation.
 
+## Instalation
+Until we set up a pypi package, you can test the library with
+
+```
+pip install git+https://github.com/visml/neo_force_scheme@0.0.1
+```
+
 ## QuickStart
 
 You can find examples for [simple data](./examples/mammals_cpu.py), [large data with cpu](./examples/mammmals_large_cpu.py),
