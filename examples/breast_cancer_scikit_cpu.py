@@ -2,12 +2,12 @@ from datetime import timedelta
 from timeit import default_timer as timer
 
 import matplotlib.pyplot as plt
-import numpy as np
 from matplotlib.colors import ListedColormap
+from sklearn import datasets
 
 from neo_force_scheme import NeoForceScheme, ProjectionMode, kruskal_stress
 
-data = np.loadtxt("./mammals.data", delimiter=",")
+data = datasets.load_breast_cancer().data
 n, d = data.shape[0], data.shape[1]
 x = data[:, range(d - 1)]
 t = data[:, d - 1]

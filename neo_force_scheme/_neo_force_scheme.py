@@ -8,13 +8,15 @@ import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_is_fitted
 
-from . import utils, distances
+from . import utils, distances, tsne, pca
 
 TPB = 16
 
 
 class ProjectionMode(Enum):
     RANDOM = 1
+    TSNE = 2
+    PCA = 3
 
 
 class NeoForceScheme(BaseEstimator):
@@ -169,6 +171,7 @@ class NeoForceScheme(BaseEstimator):
 
     def transform(
             self,
+            X: Optional[np.array] = None,
             Xd: Optional[np.array] = None,
             *,
             starting_projection_mode: Optional[ProjectionMode] = ProjectionMode.RANDOM,
@@ -200,11 +203,17 @@ class NeoForceScheme(BaseEstimator):
         if random_state is not None:
             np.random.seed(random_state)
 
-        # randomly initialize the projection
         if starting_projection_mode is not None:
+            # randomly initialize the projection
             if starting_projection_mode == ProjectionMode.RANDOM:
+                # print(starting_projection_mode)
                 Xd = np.random.random((size, 2))
-
+            # initialize the projection with tsne
+            elif starting_projection_mode == ProjectionMode.TSNE:
+                Xd = tsne.excute_tsne(X)
+            # initialize the projection with pca
+            elif starting_projection_mode == ProjectionMode.PCA:
+                Xd = pca.excute_pca(X)
         # create random index TODO: other than random
         index = np.random.permutation(size)
 
@@ -250,7 +259,8 @@ class NeoForceScheme(BaseEstimator):
             d_new_error = cuda.to_device(ref_new_error)
             for k in range(self.max_it):
                 learning_rate = self.learning_rate0 * math.pow((1 - k / self.max_it), self.decay)
-                iteration[blockspergrid, threadsperblock](d_index, d_distance_matrix, d_projection, learning_rate, d_new_error)
+                iteration[blockspergrid, threadsperblock](d_index, d_distance_matrix, d_projection, learning_rate,
+                                                          d_new_error)
                 new_error = calc_error(d_new_error.reshape(size * size)) / (size)
                 # d_new_error.copy_to_host(ref_new_error)
                 # new_error = ref_new_error.sum()/size
@@ -288,7 +298,7 @@ class NeoForceScheme(BaseEstimator):
             Starting configuration of the projection result. By default it is ignored,
             and the starting projection is randomized using starting_projection_mode and random_state.
             If specified, this must match n_samples.
-        starting_projection_mode: one of [RANDOM]
+        starting_projection_mode: one of [RANDOM], [PCA], [TSNE]
             Specifies the starting values of the projection.
             Utilize if X is None
         inpalce: boolean
