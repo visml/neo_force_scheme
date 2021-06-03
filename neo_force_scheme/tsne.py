@@ -1,18 +1,14 @@
-import sys
-import numpy as np
-import time
+from typing import Optional
+
 import matplotlib.pyplot as plt
-from sklearn.manifold import TSNE
-from sklearn.datasets import fetch_openml
-import seaborn as sns
 import pandas as pd
 from matplotlib.colors import ListedColormap
-from sklearn import datasets
+from sklearn.manifold import TSNE
 
-def excute_tsne(dataset):
-    print("Importing data.")
+
+def excute_tsne(dataset,
+                plot: Optional[bool] = False):
     rawdata = dataset
-    print("Done.")
 
     size, dimension = rawdata.shape
 
@@ -24,18 +20,17 @@ def excute_tsne(dataset):
     df['y'] = t
     df['label'] = df['y'].apply(lambda i: str(i))
     X, y = None, None
-    print('Size of the dataframe: {}'.format(df.shape))
 
     # excute tsne
-    time_start = time.time()
     tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=300)
     tsne_result = tsne.fit_transform(df[feat_cols].values)
-    print('t-SNE done! Time elapsed: {} seconds'.format(time.time() - time_start))
-    """ for debug purpose
-    plt.figure()
-    plt.scatter(tsne_results[:, 0], tsne_results[:, 1],
-              cmap=ListedColormap(['blue', 'red', 'green']), edgecolors='face', linewidths=0.5, s=4)
-    plt.grid(linestyle='dotted')
-    plt.show()
-    """
+
+    # for debug purpose
+    if plot == True:
+        plt.figure()
+        plt.scatter(tsne_result[:, 0], tsne_result[:, 1],
+                    cmap=ListedColormap(['blue', 'red', 'green']), edgecolors='face', linewidths=0.5, s=4)
+        plt.grid(linestyle='dotted')
+        plt.show()
+
     return tsne_result

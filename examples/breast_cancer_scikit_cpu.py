@@ -1,10 +1,9 @@
 from datetime import timedelta
 from timeit import default_timer as timer
-from sklearn import datasets
 
 import matplotlib.pyplot as plt
-import numpy as np
 from matplotlib.colors import ListedColormap
+from sklearn import datasets
 
 from neo_force_scheme import NeoForceScheme, ProjectionMode, kruskal_stress
 

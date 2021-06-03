@@ -206,16 +206,14 @@ class NeoForceScheme(BaseEstimator):
         if starting_projection_mode is not None:
             # randomly initialize the projection
             if starting_projection_mode == ProjectionMode.RANDOM:
-                #print(starting_projection_mode)
+                # print(starting_projection_mode)
                 Xd = np.random.random((size, 2))
             # initialize the projection with tsne
-            else:
-                if starting_projection_mode == ProjectionMode.TSNE:
-                    Xd = tsne.excute_tsne(X)
+            elif starting_projection_mode == ProjectionMode.TSNE:
+                Xd = tsne.excute_tsne(X)
             # initialize the projection with pca
-                else:
-                    if starting_projection_mode == ProjectionMode.PCA:
-                        Xd = pca.excute_pca(X)
+            elif starting_projection_mode == ProjectionMode.PCA:
+                Xd = pca.excute_pca(X)
         # create random index TODO: other than random
         index = np.random.permutation(size)
 
@@ -261,7 +259,8 @@ class NeoForceScheme(BaseEstimator):
             d_new_error = cuda.to_device(ref_new_error)
             for k in range(self.max_it):
                 learning_rate = self.learning_rate0 * math.pow((1 - k / self.max_it), self.decay)
-                iteration[blockspergrid, threadsperblock](d_index, d_distance_matrix, d_projection, learning_rate, d_new_error)
+                iteration[blockspergrid, threadsperblock](d_index, d_distance_matrix, d_projection, learning_rate,
+                                                          d_new_error)
                 new_error = calc_error(d_new_error.reshape(size * size)) / (size)
                 # d_new_error.copy_to_host(ref_new_error)
                 # new_error = ref_new_error.sum()/size
