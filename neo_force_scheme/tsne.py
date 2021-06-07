@@ -22,7 +22,7 @@ def excute_tsne(dataset,
     X, y = None, None
 
     # excute tsne
-    tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=300)
+    tsne = TSNE(n_components=3, verbose=1, perplexity=40, n_iter=300)
     tsne_result = tsne.fit_transform(df[feat_cols].values)
 
     # for debug purpose

@@ -207,7 +207,7 @@ class NeoForceScheme(BaseEstimator):
             # randomly initialize the projection
             if starting_projection_mode == ProjectionMode.RANDOM:
                 # print(starting_projection_mode)
-                Xd = np.random.random((size, 2))
+                Xd = np.random.random((size, 3))
             # initialize the projection with tsne
             elif starting_projection_mode == ProjectionMode.TSNE:
                 Xd = tsne.excute_tsne(X)
