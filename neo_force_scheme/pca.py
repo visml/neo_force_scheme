@@ -9,7 +9,8 @@ from sklearn.decomposition import PCA
 
 
 def excute_pca(dataset,
-               plot: Optional[bool] = False):
+               plot: Optional[bool] = False,
+               n_dimension: Optional[int] = 2):
     rawdata = dataset
 
     size, dimension = rawdata.shape
@@ -25,7 +26,8 @@ def excute_pca(dataset,
     df['label'] = df['y'].apply(lambda i: str(i))
     X, y = None, None
 
-    pca = PCA(n_components=2)
+
+    pca = PCA(n_components=n_dimension)
     pca_result = pca.fit_transform(df[feat_cols].values)
 
     # for debug purpose
