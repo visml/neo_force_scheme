@@ -26,6 +26,7 @@ def excute_pca(dataset,
     df['label'] = df['y'].apply(lambda i: str(i))
     X, y = None, None
 
+
     pca = PCA(n_components=n_dimension)
     pca_result = pca.fit_transform(df[feat_cols].values)
 

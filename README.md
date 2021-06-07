@@ -1,4 +1,5 @@
 # NeoForceScheme
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4891820.svg)](https://doi.org/10.5281/zenodo.4891820)
 
 A new library for extended and performance-focused ForceScheme implementation.
 
@@ -104,3 +105,18 @@ fig.show()
 
 ## API
 More information can be found at [our documentation page](#)
+
+# CITATION
+```bibtex
+@misc{christino_paulovich_4891820,
+  author       = {Paulovich, Fernando and Christino, Leonardo},
+  title        = {NeoForceScheme},
+  version      = {0.0.2},
+  publisher    = {Zenodo},
+  month        = may,
+  year         = 2021,
+  doi          = {10.5281/zenodo.4891820},
+  url          = {http://dx.doi.org/10.5281/zenodo.4891820}
+    
+}
+```
