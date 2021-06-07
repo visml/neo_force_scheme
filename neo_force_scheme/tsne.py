@@ -7,7 +7,8 @@ from sklearn.manifold import TSNE
 
 
 def excute_tsne(dataset,
-                plot: Optional[bool] = False):
+                plot: Optional[bool] = False,
+                n_dimension: Optional[int] = 2):
     rawdata = dataset
 
     size, dimension = rawdata.shape
@@ -22,7 +23,10 @@ def excute_tsne(dataset,
     X, y = None, None
 
     # excute tsne
-    tsne = TSNE(n_components=3, verbose=1, perplexity=40, n_iter=300)
+    if (n_dimension == 2):
+        tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=300)
+    elif (n_dimension == 3):
+        tsne = TSNE(n_components=3, verbose=1, perplexity=40, n_iter=300)
     tsne_result = tsne.fit_transform(df[feat_cols].values)
 
     # for debug purpose

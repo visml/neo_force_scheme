@@ -177,6 +177,7 @@ class NeoForceScheme(BaseEstimator):
             starting_projection_mode: Optional[ProjectionMode] = ProjectionMode.RANDOM,
             inpalce: bool = True,  # TODO: implement False
             random_state: float = None,
+            n_dimension: Optional[int] = 2
     ):
         """Transform X into the existing embedded space and return that
         transformed output.
@@ -207,13 +208,22 @@ class NeoForceScheme(BaseEstimator):
             # randomly initialize the projection
             if starting_projection_mode == ProjectionMode.RANDOM:
                 # print(starting_projection_mode)
-                Xd = np.random.random((size, 3))
+                if (n_dimension == 2):
+                    Xd = np.random.random((size, 2))
+                elif (n_dimension == 3):
+                    Xd = np.random.random((size, 3))
             # initialize the projection with tsne
             elif starting_projection_mode == ProjectionMode.TSNE:
-                Xd = tsne.excute_tsne(X)
+                if (n_dimension == 2):
+                    Xd = tsne.excute_tsne(X, n_dimension=2)
+                elif (n_dimension == 3):
+                    Xd = tsne.excute_tsne(X, n_dimension=3)
             # initialize the projection with pca
             elif starting_projection_mode == ProjectionMode.PCA:
-                Xd = pca.excute_pca(X)
+                if (n_dimension == 2):
+                    Xd = pca.excute_pca(X, n_dimension=2)
+                elif (n_dimension == 3):
+                    Xd = pca.excute_pca(X, n_dimension=3)
         # create random index TODO: other than random
         index = np.random.permutation(size)
 
