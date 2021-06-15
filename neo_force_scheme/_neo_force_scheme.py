@@ -8,7 +8,7 @@ import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_is_fitted
 
-from . import utils, distances, tsne, pca
+from . import utils, distances, tsne, pca, axis
 
 TPB = 16
 
@@ -326,3 +326,36 @@ class NeoForceScheme(BaseEstimator):
         """
         self._fit(X)
         return self
+
+    def create_maxmin_point(self, data):
+        mean = axis.calculate_mean(data)
+        for index in range(len(data[0])):
+            max_p = axis.find_max(data, index, mean)
+            min_p = axis.find_min(data, index, mean)
+            data = np.append(data, [max_p], axis=0)
+            data = np.append(data, [min_p], axis=0)
+
+        return data
+
+    def calculate_height(self, data, index, eye):
+        height_x = np.zeros(int((len(data) - index) / 2))
+        height_y = np.zeros(int((len(data) - index) / 2))
+        number = index
+        height_index = 0
+        while number < len(data):
+            height_x[height_index], height_y[height_index] = axis.oblique_projection(data[number], data[number + 1],
+                                                                                     eye)
+            height_index = height_index + 1
+            number = number + 2
+
+        return height_x, height_y
+
+    def sort_height(self, variable_name, x_height, y_height):
+        x_height_joint = [[variable_name[0], x_height[0]]]
+        y_height_joint = [[variable_name[0], y_height[0]]]
+        for index in range(len(variable_name)-1):
+            x_height_joint.append([variable_name[index+1], x_height[index+1]])
+            y_height_joint.append([variable_name[index + 1], y_height[index + 1]])
+        x_height_joint.sort(key=lambda x: x[1], reverse=True)
+        y_height_joint.sort(key=lambda x: x[1], reverse=True)
+        return np.array(x_height_joint), np.array(y_height_joint)
