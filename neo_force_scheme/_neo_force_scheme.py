@@ -207,7 +207,6 @@ class NeoForceScheme(BaseEstimator):
         if starting_projection_mode is not None:
             # randomly initialize the projection
             if starting_projection_mode == ProjectionMode.RANDOM:
-                # print(starting_projection_mode)
                 Xd = np.random.random((size, n_dimension))
             # initialize the projection with tsne
             elif starting_projection_mode == ProjectionMode.TSNE:
@@ -215,6 +214,7 @@ class NeoForceScheme(BaseEstimator):
             # initialize the projection with pca
             elif starting_projection_mode == ProjectionMode.PCA:
                 Xd = pca.excute_pca(X, n_dimension=n_dimension)
+                
         # create random index TODO: other than random
         index = np.random.permutation(size)
 
