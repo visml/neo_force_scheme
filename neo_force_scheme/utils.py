@@ -55,6 +55,18 @@ def move(ins1, distance_matrix, projection, learning_rate, n_dimension):
                 y1y2 = projection[ins2][1] - projection[ins1][1]
                 dr2 = max(math.sqrt(x1x2 * x1x2 + y1y2 * y1y2), 0.0001)
 
+                # getting te index in the distance matrix and getting the value
+                r = (ins1 + ins2 - math.fabs(ins1 - ins2)) / 2  # min(i,j,k)
+                s = (ins1 + ins2 + math.fabs(ins1 - ins2)) / 2  # max(i,j,k)
+                drn = distance_matrix[int(total - ((size - r) * (size - r + 1) / 2) + (s - r))]
+
+                # calculate the movement
+                delta = (drn - dr2)
+                error += math.fabs(delta)
+
+                projection[ins2][0] += learning_rate * delta * (x1x2 / dr2)
+                projection[ins2][1] += learning_rate * delta * (y1y2 / dr2)
+
     elif n_dimension == 3:
         for ins2 in numba.prange(size):
             if ins1 != ins2:
@@ -63,25 +75,18 @@ def move(ins1, distance_matrix, projection, learning_rate, n_dimension):
                 z1z2 = projection[ins2][2] - projection[ins1][2]
                 dr2 = max(math.sqrt(x1x2 * x1x2 + y1y2 * y1y2 + z1z2 * z1z2), 0.0001)
 
-    # getting te index in the distance matrix and getting the value
-    r = (ins1 + ins2 - math.fabs(ins1 - ins2)) / 2  # min(i,j,k)
-    s = (ins1 + ins2 + math.fabs(ins1 - ins2)) / 2  # max(i,j,k)
-    drn = distance_matrix[int(total - ((size - r) * (size - r + 1) / 2) + (s - r))]
+                # getting te index in the distance matrix and getting the value
+                r = (ins1 + ins2 - math.fabs(ins1 - ins2)) / 2  # min(i,j,k)
+                s = (ins1 + ins2 + math.fabs(ins1 - ins2)) / 2  # max(i,j,k)
+                drn = distance_matrix[int(total - ((size - r) * (size - r + 1) / 2) + (s - r))]
 
-    # calculate the movement
-    delta = (drn - dr2)
-    error += math.fabs(delta)
+                # calculate the movement
+                delta = (drn - dr2)
+                error += math.fabs(delta)
 
-    if n_dimension == 2:
-        # moving
-        projection[ins2][0] += learning_rate * delta * (x1x2 / dr2)
-        projection[ins2][1] += learning_rate * delta * (y1y2 / dr2)
-
-    if n_dimension == 3:
-        # moving
-        projection[ins2][0] += learning_rate * delta * (x1x2 / dr2)
-        projection[ins2][1] += learning_rate * delta * (y1y2 / dr2)
-        projection[ins2][2] += learning_rate * delta * (z1z2 / dr2)
+                projection[ins2][0] += learning_rate * delta * (x1x2 / dr2)
+                projection[ins2][1] += learning_rate * delta * (y1y2 / dr2)
+                projection[ins2][2] += learning_rate * delta * (z1z2 / dr2)
 
     return error / size
 
@@ -93,7 +98,7 @@ def iteration(index, distance_matrix, projection, learning_rate, n_dimension):
 
     for i in numba.prange(size):
         ins1 = index[i]
-        error += move(ins1, distance_matrix, projection, learning_rate, n_dimension)
+        error += move(ins1, distance_matrix, projection, learning_rate, n_dimension=n_dimension)
 
     return error / size
 
