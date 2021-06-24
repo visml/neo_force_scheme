@@ -8,7 +8,7 @@ import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_is_fitted
 
-from . import utils, distances, tsne, pca, axis
+from . import utils, distances, tsne, pca
 
 TPB = 16
 
@@ -156,12 +156,12 @@ class NeoForceScheme(BaseEstimator):
         self.embedding_ = utils.create_triangular_distance_matrix(X, self.metric)
         self.print(f'Distance matrix size in memory: ', round(getsizeof(self.embedding_) / 1024 / 1024, 2), 'MB')
 
-    def _transform(self, X, *, index, total, inplace):
+    def _transform(self, X, *, index, total, inplace, n_dimension: Optional[int] = 2):
         # iterate until max_it or if the error does not change more than the tolerance
         error = math.inf
         for k in range(self.max_it):
             learning_rate = self.learning_rate0 * math.pow((1 - k / self.max_it), self.decay)
-            new_error = utils.iteration(index, self.embedding_, X, learning_rate)
+            new_error = utils.iteration(index, self.embedding_, X, learning_rate, n_dimension)
 
             if math.fabs(new_error - error) < self.tolerance:
                 break
@@ -177,7 +177,7 @@ class NeoForceScheme(BaseEstimator):
             starting_projection_mode: Optional[ProjectionMode] = ProjectionMode.RANDOM,
             inpalce: bool = True,  # TODO: implement False
             random_state: float = None,
-            n_dimension: Optional[int] = 2
+            n_dimension: Optional[int] = 2,
     ):
         """Transform X into the existing embedded space and return that
         transformed output.
@@ -207,6 +207,7 @@ class NeoForceScheme(BaseEstimator):
         if starting_projection_mode is not None:
             # randomly initialize the projection
             if starting_projection_mode == ProjectionMode.RANDOM:
+                # print(starting_projection_mode)
                 Xd = np.random.random((size, n_dimension))
             # initialize the projection with tsne
             elif starting_projection_mode == ProjectionMode.TSNE:
@@ -214,21 +215,32 @@ class NeoForceScheme(BaseEstimator):
             # initialize the projection with pca
             elif starting_projection_mode == ProjectionMode.PCA:
                 Xd = pca.excute_pca(X, n_dimension=n_dimension)
-                
         # create random index TODO: other than random
         index = np.random.permutation(size)
 
         if self.cuda:
             Xd, self.projection_error_ = self._gpu_transform(Xd, index=index, total=total, inplace=inpalce)
         else:
-            Xd, self.projection_error_ = self._transform(Xd, index=index, total=total, inplace=inpalce)
+            Xd, self.projection_error_ = self._transform(Xd, index=index, total=total, inplace=inpalce,
+                                                         n_dimension=n_dimension)
 
-        # setting the min to (0,0)
-        min_x = min(Xd[:, 0])
-        min_y = min(Xd[:, 1])
-        for i in range(size):
-            Xd[i][0] -= min_x
-            Xd[i][1] -= min_y
+        if n_dimension == 2:
+            # setting the min to (0,0)
+            min_x = min(Xd[:, 0])
+            min_y = min(Xd[:, 1])
+            for i in range(size):
+                Xd[i][0] -= min_x
+                Xd[i][1] -= min_y
+
+        elif n_dimension == 3:
+            # setting the min to (0,0)
+            min_x = min(Xd[:, 0])
+            min_y = min(Xd[:, 1])
+            min_z = min(Xd[:, 2])
+            for i in range(size):
+                Xd[i][0] -= min_x
+                Xd[i][1] -= min_y
+                Xd[i][2] -= min_z
 
         return Xd
 
@@ -326,36 +338,3 @@ class NeoForceScheme(BaseEstimator):
         """
         self._fit(X)
         return self
-
-    def create_maxmin_point(self, data):
-        mean = axis.calculate_mean(data)
-        for index in range(len(data[0])):
-            max_p = axis.find_max(data, index, mean)
-            min_p = axis.find_min(data, index, mean)
-            data = np.append(data, [max_p], axis=0)
-            data = np.append(data, [min_p], axis=0)
-
-        return data
-
-    def calculate_height(self, data, index, eye):
-        height_x = np.zeros(int((len(data) - index) / 2))
-        height_y = np.zeros(int((len(data) - index) / 2))
-        number = index
-        height_index = 0
-        while number < len(data):
-            height_x[height_index], height_y[height_index] = axis.oblique_projection(data[number], data[number + 1],
-                                                                                     eye)
-            height_index = height_index + 1
-            number = number + 2
-
-        return height_x, height_y
-
-    def sort_height(self, variable_name, x_height, y_height):
-        x_height_joint = [[variable_name[0], x_height[0]]]
-        y_height_joint = [[variable_name[0], y_height[0]]]
-        for index in range(len(variable_name)-1):
-            x_height_joint.append([variable_name[index+1], x_height[index+1]])
-            y_height_joint.append([variable_name[index + 1], y_height[index + 1]])
-        x_height_joint.sort(key=lambda x: x[1], reverse=True)
-        y_height_joint.sort(key=lambda x: x[1], reverse=True)
-        return np.array(x_height_joint), np.array(y_height_joint)
