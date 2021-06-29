@@ -4,8 +4,6 @@ import pickle
 import numba
 import numpy as np
 
-from . import distances
-
 MACHINE_EPSILON = np.finfo(np.double).eps
 
 
@@ -45,41 +43,43 @@ def pickle_save_matrix(filename, distance_matrix, size):
 
 
 @numba.njit(parallel=True, fastmath=True)
-def move(ins1, distance_matrix, projection, learning_rate):
+def move(ins1, distance_matrix, projection, learning_rate, n_dimension):
     size = len(projection)
     total = len(distance_matrix)
     error = 0
-
     for ins2 in numba.prange(size):
         if ins1 != ins2:
-            x1x2 = projection[ins2][0] - projection[ins1][0]
-            y1y2 = projection[ins2][1] - projection[ins1][1]
-            dr2 = max(math.sqrt(x1x2 * x1x2 + y1y2 * y1y2), 0.0001)
+            temp_dist = np.zeros(n_dimension)
+            temp_dr2 = 0
+            for index in range(n_dimension):
+                temp_dist[index] = projection[ins2][index] - projection[ins1][index]
+                temp_dr2 += temp_dist[index] *temp_dist[index]
+            dr2 = max(math.sqrt(temp_dr2), 0.0001)
 
             # getting te index in the distance matrix and getting the value
-            r = (ins1 + ins2 - math.fabs(ins1 - ins2)) / 2  # min(i,j)
-            s = (ins1 + ins2 + math.fabs(ins1 - ins2)) / 2  # max(i,j)
+            r = (ins1 + ins2 - math.fabs(ins1 - ins2)) / 2  # min(i,j,k)
+            s = (ins1 + ins2 + math.fabs(ins1 - ins2)) / 2  # max(i,j,k)
             drn = distance_matrix[int(total - ((size - r) * (size - r + 1) / 2) + (s - r))]
 
             # calculate the movement
             delta = (drn - dr2)
             error += math.fabs(delta)
 
-            # moving
-            projection[ins2][0] += learning_rate * delta * (x1x2 / dr2)
-            projection[ins2][1] += learning_rate * delta * (y1y2 / dr2)
+            for index in range(n_dimension):
+                projection[ins2][index] += learning_rate * delta * (temp_dist[index] / dr2)
 
     return error / size
 
 
 @numba.njit(parallel=True, fastmath=True)
-def iteration(index, distance_matrix, projection, learning_rate):
+def iteration(index, distance_matrix, projection, learning_rate, n_dimension):
     size = len(projection)
     error = 0
 
     for i in numba.prange(size):
         ins1 = index[i]
-        error += move(ins1, distance_matrix, projection, learning_rate)
+        error += move(ins1=ins1, distance_matrix=distance_matrix, projection=projection,
+                      learning_rate=learning_rate, n_dimension=n_dimension)
 
     return error / size
 
