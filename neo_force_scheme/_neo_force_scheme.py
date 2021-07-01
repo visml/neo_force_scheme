@@ -8,7 +8,7 @@ import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_is_fitted
 
-from . import utils, distances, tsne, pca
+from . import utils, distances, embedding
 
 TPB = 16
 
@@ -207,14 +207,14 @@ class NeoForceScheme(BaseEstimator):
         if starting_projection_mode is not None:
             # randomly initialize the projection
             if starting_projection_mode == ProjectionMode.RANDOM:
+                # print(starting_projection_mode)
                 Xd = np.random.random((size, n_dimension))
             # initialize the projection with tsne
             elif starting_projection_mode == ProjectionMode.TSNE:
-                Xd = tsne.excute_tsne(X, n_dimension=n_dimension)
+                Xd = embedding.excute_tsne(X, n_dimension=n_dimension)
             # initialize the projection with pca
             elif starting_projection_mode == ProjectionMode.PCA:
-                Xd = pca.excute_pca(X, n_dimension=n_dimension)
-
+                Xd = embedding.excute_pca(X, n_dimension=n_dimension)
         index = np.random.permutation(size)
 
         if n_dimension > 3:
