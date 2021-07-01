@@ -8,13 +8,11 @@ from sklearn.decomposition import PCA
 
 
 def excute_tsne(dataset,
-                plot: Optional[bool] = False,
                 n_dimension: Optional[int] = 2):
     dataset_embedded = TSNE(n_components=n_dimension).fit_transform(dataset)
     return dataset_embedded
 
 def excute_pca(dataset,
-               plot: Optional[bool] = False,
                n_dimension: Optional[int] = 2):
     dataset_embedded = PCA(n_components=n_dimension).fit_transform(dataset)
     return dataset_embedded
