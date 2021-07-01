@@ -6,9 +6,11 @@ from typing import Optional
 
 import numpy as np
 from sklearn.base import BaseEstimator
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 from sklearn.utils.validation import check_is_fitted
 
-from . import utils, distances, embedding
+from . import utils, distances
 
 TPB = 16
 
@@ -161,7 +163,8 @@ class NeoForceScheme(BaseEstimator):
         error = math.inf
         for k in range(self.max_it):
             learning_rate = self.learning_rate0 * math.pow((1 - k / self.max_it), self.decay)
-            new_error = utils.iteration(index=index, distance_matrix=self.embedding_, projection=X, learning_rate=learning_rate, n_dimension=n_dimension)
+            new_error = utils.iteration(index=index, distance_matrix=self.embedding_, projection=X,
+                                        learning_rate=learning_rate, n_dimension=n_dimension)
 
             if math.fabs(new_error - error) < self.tolerance:
                 break
@@ -211,10 +214,12 @@ class NeoForceScheme(BaseEstimator):
                 Xd = np.random.random((size, n_dimension))
             # initialize the projection with tsne
             elif starting_projection_mode == ProjectionMode.TSNE:
-                Xd = embedding.excute_tsne(X, n_dimension=n_dimension)
+                # TODO: Allow user input for tsne iteration time.
+                # Note: bigger the iteration time, larger the final kruskal stress.
+                Xd = TSNE(n_components=n_dimension, n_iter=300).fit_transform(X)
             # initialize the projection with pca
             elif starting_projection_mode == ProjectionMode.PCA:
-                Xd = embedding.excute_pca(X, n_dimension=n_dimension)
+                Xd = PCA(n_components=n_dimension).fit_transform(X)
         index = np.random.permutation(size)
 
         if n_dimension > 3:
