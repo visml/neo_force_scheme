@@ -53,7 +53,7 @@ def move(ins1, distance_matrix, projection, learning_rate, n_dimension):
             temp_dr2 = 0
             for index in range(n_dimension):
                 temp_dist[index] = projection[ins2][index] - projection[ins1][index]
-                temp_dr2 += temp_dist[index] *temp_dist[index]
+                temp_dr2 += temp_dist[index] * temp_dist[index]
             dr2 = max(math.sqrt(temp_dr2), 0.0001)
 
             # getting te index in the distance matrix and getting the value
@@ -96,4 +96,5 @@ def create_triangular_distance_matrix(
         for j in range(i, size):
             distance_matrix[k] = metric(data[i], data[j])
             k = k + 1
+
     return distance_matrix

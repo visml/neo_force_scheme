@@ -163,8 +163,8 @@ class NeoForceScheme(BaseEstimator):
         error = math.inf
         for k in range(self.max_it):
             learning_rate = self.learning_rate0 * math.pow((1 - k / self.max_it), self.decay)
-            new_error = utils.iteration(index=index, distance_matrix=self.embedding_, projection=X,
-                                        learning_rate=learning_rate, n_dimension=n_dimension)
+            new_error = utils.iteration(index, self.embedding_, X,
+                                        learning_rate, n_dimension)
 
             if math.fabs(new_error - error) < self.tolerance:
                 break
@@ -174,7 +174,6 @@ class NeoForceScheme(BaseEstimator):
 
     def transform(
             self,
-            X: Optional[np.array] = None,
             Xd: Optional[np.array] = None,
             *,
             starting_projection_mode: Optional[ProjectionMode] = ProjectionMode.RANDOM,
@@ -216,10 +215,10 @@ class NeoForceScheme(BaseEstimator):
             elif starting_projection_mode == ProjectionMode.TSNE:
                 # TODO: Allow user input for tsne iteration time.
                 # Note: bigger the iteration time, larger the final kruskal stress.
-                Xd = TSNE(n_components=n_dimension, n_iter=300).fit_transform(X)
+                Xd = TSNE(n_components=n_dimension, n_iter=300).fit_transform(Xd)
             # initialize the projection with pca
             elif starting_projection_mode == ProjectionMode.PCA:
-                Xd = PCA(n_components=n_dimension).fit_transform(X)
+                Xd = PCA(n_components=n_dimension).fit_transform(Xd)
         index = np.random.permutation(size)
 
         if n_dimension > 3:
@@ -234,9 +233,21 @@ class NeoForceScheme(BaseEstimator):
             Xd, self.projection_error_ = self._transform(Xd, index=index, total=total, inplace=inpalce,
                                                          n_dimension=n_dimension)
 
-        for i in range(size):
-            for index in range(n_dimension):
-                Xd[i][index] -= min(Xd[:, index])
+        # setting the min to (0,0)
+        if (n_dimension == 2):
+            min_x = min(Xd[:, 0])
+            min_y = min(Xd[:, 1])
+            for i in range(size):
+                Xd[i][0] -= min_x
+                Xd[i][1] -= min_y
+        elif (n_dimension == 3):
+            min_x = min(Xd[:, 0])
+            min_y = min(Xd[:, 1])
+            min_z = min(Xd[:, 2])
+            for i in range(size):
+                Xd[i][0] -= min_x
+                Xd[i][1] -= min_y
+                Xd[i][2] -= min_z
 
         return Xd
 
