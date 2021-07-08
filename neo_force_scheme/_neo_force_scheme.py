@@ -163,8 +163,7 @@ class NeoForceScheme(BaseEstimator):
         error = math.inf
         for k in range(self.max_it):
             learning_rate = self.learning_rate0 * math.pow((1 - k / self.max_it), self.decay)
-            new_error = utils.iteration(index, self.embedding_, X,
-                                        learning_rate, n_dimension)
+            new_error = utils.iteration(index=index, distance_matrix=self.embedding_, projection=X, learning_rate=learning_rate, n_dimension=n_dimension)
 
             if math.fabs(new_error - error) < self.tolerance:
                 break
@@ -232,22 +231,9 @@ class NeoForceScheme(BaseEstimator):
         else:
             Xd, self.projection_error_ = self._transform(Xd, index=index, total=total, inplace=inpalce,
                                                          n_dimension=n_dimension)
-
-        # setting the min to (0,0)
-        if (n_dimension == 2):
-            min_x = min(Xd[:, 0])
-            min_y = min(Xd[:, 1])
-            for i in range(size):
-                Xd[i][0] -= min_x
-                Xd[i][1] -= min_y
-        elif (n_dimension == 3):
-            min_x = min(Xd[:, 0])
-            min_y = min(Xd[:, 1])
-            min_z = min(Xd[:, 2])
-            for i in range(size):
-                Xd[i][0] -= min_x
-                Xd[i][1] -= min_y
-                Xd[i][2] -= min_z
+        for i in range(size):
+            for index in range(n_dimension):
+                Xd[i][index] -= min(Xd[:, index])
 
         return Xd
 
