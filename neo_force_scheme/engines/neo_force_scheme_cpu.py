@@ -43,7 +43,7 @@ def pickle_save_matrix(filename, distance_matrix, size):
 
 
 @numba.njit(parallel=True, fastmath=True)
-def move(ins1, distance_matrix, projection, learning_rate, n_dimension):
+def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric):
     size = len(projection)
     total = len(distance_matrix)
     error = 0
@@ -55,6 +55,7 @@ def move(ins1, distance_matrix, projection, learning_rate, n_dimension):
                 temp_dist[index] = projection[ins2][index] - projection[ins1][index]
                 temp_dr2 += temp_dist[index] * temp_dist[index]
             dr2 = max(math.sqrt(temp_dr2), 0.0001)
+            # dr2 = max(metric(projection[ins1], projection[ins2]), 0.0001)
 
             # getting te index in the distance matrix and getting the value
             r = (ins1 + ins2 - math.fabs(ins1 - ins2)) / 2  # min(i,j,k)
@@ -72,14 +73,18 @@ def move(ins1, distance_matrix, projection, learning_rate, n_dimension):
 
 
 @numba.njit(parallel=True, fastmath=True)
-def iteration(index, distance_matrix, projection, learning_rate, n_dimension):
+def iteration(index, distance_matrix, projection, learning_rate, n_dimension, metric):
     size = len(projection)
     error = 0
 
     for i in numba.prange(size):
         ins1 = index[i]
-        error += move(ins1=ins1, distance_matrix=distance_matrix, projection=projection,
-                      learning_rate=learning_rate, n_dimension=n_dimension)
+        error += move(ins1=ins1,
+                      distance_matrix=distance_matrix,
+                      projection=projection,
+                      learning_rate=learning_rate,
+                      n_dimension=n_dimension,
+                      metric=metric)
 
     return error / size
 
@@ -98,3 +103,25 @@ def create_triangular_distance_matrix(
             k = k + 1
 
     return distance_matrix
+
+
+@numba.njit(parallel=True)
+def kruskal_stress(distance_matrix, projection, metric):
+    size = len(projection)
+    total = len(distance_matrix)
+
+    den = 0
+    num = 0
+
+    for i in numba.prange(size):
+        for j in numba.prange(size):
+            dr2 = metric(projection[i], projection[j])
+
+            r = (i + j - math.fabs(i - j)) / 2  # min(i,j)
+            s = (i + j + math.fabs(i - j)) / 2  # max(i,j)
+            drn = distance_matrix[int(total - ((size - r) * (size - r + 1) / 2) + (s - r))]
+
+            num += (drn - dr2) * (drn - dr2)
+            den += drn * drn
+
+    return math.sqrt(num / den)

@@ -10,9 +10,8 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from sklearn.utils.validation import check_is_fitted
 
-from . import utils, distances
-
-TPB = 16
+from .engines import neo_force_scheme_cpu
+from . import distances
 
 
 class ProjectionMode(Enum):
@@ -144,18 +143,18 @@ class NeoForceScheme(BaseEstimator):
 
     def save(self, filename, *, use_pickle=True):
         if use_pickle:
-            utils.pickle_save_matrix(filename, self.embedding_, self.embedding_size_)
+            neo_force_scheme_cpu.pickle_save_matrix(filename, self.embedding_, self.embedding_size_)
         else:
             raise NotImplemented('Only pickle save method is currently implemented')
 
     def load(self, filename, *, use_pickle=True):
         if use_pickle:
-            self.embedding_, self.embedding_size_ = utils.pickle_load_matrix(filename)
+            self.embedding_, self.embedding_size_ = neo_force_scheme_cpu.pickle_load_matrix(filename)
         else:
-            self.embedding_, self.embedding_size_ = utils.read_distance_matrix(filename)
+            self.embedding_, self.embedding_size_ = neo_force_scheme_cpu.read_distance_matrix(filename)
 
     def _fit(self, X, skip_num_points=0):
-        self.embedding_ = utils.create_triangular_distance_matrix(X, self.metric)
+        self.embedding_ = neo_force_scheme_cpu.create_triangular_distance_matrix(X, self.metric)
         self.print(f'Distance matrix size in memory: ', round(getsizeof(self.embedding_) / 1024 / 1024, 2), 'MB')
 
     def _transform(self, X, *, index, total, inplace, n_dimension: Optional[int] = 2):
@@ -163,12 +162,19 @@ class NeoForceScheme(BaseEstimator):
         error = math.inf
         for k in range(self.max_it):
             learning_rate = self.learning_rate0 * math.pow((1 - k / self.max_it), self.decay)
-            new_error = utils.iteration(index=index, distance_matrix=self.embedding_, projection=X, learning_rate=learning_rate, n_dimension=n_dimension)
+            new_error = neo_force_scheme_cpu.iteration(index=index,
+                                                       distance_matrix=self.embedding_,
+                                                       projection=X,
+                                                       learning_rate=learning_rate,
+                                                       n_dimension=n_dimension,
+                                                       metric=self.metric)
 
             if math.fabs(new_error - error) < self.tolerance:
+                self.print(f'Error below tolerance {math.fabs(new_error - error)} in iteration {k}, breaking')
                 break
 
             error = new_error
+        self.print(f'Max iteration reached, breaking!')
         return X, error
 
     def transform(
@@ -208,26 +214,22 @@ class NeoForceScheme(BaseEstimator):
         if starting_projection_mode is not None:
             # randomly initialize the projection
             if starting_projection_mode == ProjectionMode.RANDOM:
-                # print(starting_projection_mode)
                 Xd = np.random.random((size, n_dimension))
             # initialize the projection with tsne
             elif starting_projection_mode == ProjectionMode.TSNE:
                 # TODO: Allow user input for tsne iteration time.
                 # Note: bigger the iteration time, larger the final kruskal stress.
-                Xd = TSNE(n_components=n_dimension, n_iter=300).fit_transform(Xd)
+                Xd = TSNE(n_components=n_dimension, n_iter=self.max_it, n_jobs=self.n_jobs, random_state=random_state).fit_transform(Xd)
             # initialize the projection with pca
             elif starting_projection_mode == ProjectionMode.PCA:
-                Xd = PCA(n_components=n_dimension).fit_transform(Xd)
+                Xd = PCA(n_components=n_dimension, random_state=random_state).fit_transform(Xd)
         index = np.random.permutation(size)
 
         if n_dimension > 3:
             raise NotImplementedError('projection for a dimension bigger than 3 is not implemented yet!')
 
         if self.cuda:
-            if n_dimension == 2:
-                Xd, self.projection_error_ = self._gpu_transform(Xd, index=index, total=total, inplace=inpalce)
-            else:
-                raise NotImplementedError('3d version for gpu is not implemented yet!')
+            Xd, self.projection_error_ = self._gpu_transform(Xd, index=index, total=total, inplace=inpalce, n_dimension=n_dimension)
         else:
             Xd, self.projection_error_ = self._transform(Xd, index=index, total=total, inplace=inpalce,
                                                          n_dimension=n_dimension)
@@ -237,56 +239,13 @@ class NeoForceScheme(BaseEstimator):
 
         return Xd
 
-    def _gpu_transform(self, X, *, index, total, inplace):
+    def _gpu_transform(self, X, *, index, total, inplace, n_dimension):
+        if n_dimension > 3:
+            raise NotImplementedError('4d version for gpu is not implemented yet!')
+
         try:
-            from numba import cuda
-            from .cuda_utils import calc_error, iteration
-            # iterate until max_it or if the error does not change more than the tolerance
-            error = math.inf
-
-            d_distance_matrix = cuda.to_device(self.embedding_)
-            d_index = cuda.to_device(index)
-            d_projection = cuda.to_device(X)
-
-            size = int(math.sqrt(2 * total + 1))
-            threadsperblock = self.cuda_threads_per_block if self.cuda_threads_per_block else (TPB, TPB)
-            if self.cuda_blocks_per_grid is not None:
-                blockspergrid = self.cuda_blocks_per_grid
-            elif isinstance(threadsperblock, int):
-                blockspergrid = (size) // threadsperblock
-            else:
-                blockspergrid = ((size) // threadsperblock[0], (size) // threadsperblock[1])
-            self.print(f'Dist: threads:{threadsperblock}, blocks:{blockspergrid}')
-
-            if self.cuda_profile:
-                cuda.profile_start()
-
-            ref_new_error = np.zeros(shape=(size, size), dtype=np.float64)
-            d_new_error = cuda.to_device(ref_new_error)
-            for k in range(self.max_it):
-                learning_rate = self.learning_rate0 * math.pow((1 - k / self.max_it), self.decay)
-                iteration[blockspergrid, threadsperblock](d_index, d_distance_matrix, d_projection, learning_rate,
-                                                          d_new_error)
-                new_error = calc_error(d_new_error.reshape(size * size)) / (size)
-                # d_new_error.copy_to_host(ref_new_error)
-                # new_error = ref_new_error.sum()/size
-                # self.print(new_error, error, size, np.isinf(ref_new_error).sum(), np.isnan(ref_new_error).sum())
-                if math.fabs(new_error - error) < self.tolerance:
-                    break
-
-                error = new_error
-
-            if self.cuda_profile:
-                cuda.profile_stop()
-            self.print(f'Iter: {k} error: {error}')
-
-            if inplace:
-                d_projection.copy_to_host(X)
-                return X, error
-            else:
-                tmp = None
-                d_projection.copy_to_host(tmp)
-                return tmp, error
+            from .neo_force_scheme_gpu import gpu_transform
+            return gpu_transform(self, X=X, index=index, total=total, inplace=inplace)
         except Exception as e:
             print(f'Unable to use GPU due to exception {e}. Defaulting to CPU')
             traceback.print_stack()
@@ -331,3 +290,24 @@ class NeoForceScheme(BaseEstimator):
         """
         self._fit(X)
         return self
+
+    def score(self, projection, *, distance_matrix: Optional[np.array] = None):
+        """Calculates the kruskal stress of the projection.
+        Uses the calculated distance matrix by default, but can be given a custom one if needed
+        Parameters
+        ----------
+        projection : ndarray of shape (n_samples, 2)
+            Result of the transform operation (aka the resulting projection)
+        distance_matrix : Optional custom distance matrix to calculate the score from
+
+        Returns
+        -------
+        score: the kruskal_stress between 0 and 1. Represents how well the projection represents the original distances.
+        Numbers below 0.1 are considered low,
+        between 0.1 and 0.3 medium, between 0.3 and 0.5 high, and above 0.5 very high.
+        """
+        if distance_matrix is None:
+            distance_matrix = self.embedding_
+        if distance_matrix is None:
+            raise Exception('Please run a transform operation or provide a custom distance matrix before calling the score')
+        return neo_force_scheme_cpu.kruskal_stress(self.embedding_, projection, self.metric)
