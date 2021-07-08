@@ -9,7 +9,6 @@ from neo_force_scheme import NeoForceScheme, ProjectionMode, kruskal_stress
 
 data = datasets.load_breast_cancer().data
 n, d = data.shape[0], data.shape[1]
-x = data[:, range(d - 1)]
 t = data[:, d - 1]
 
 # read the distance matrix
@@ -17,9 +16,9 @@ nfs = NeoForceScheme(verbose=True, learning_rate0=0.2, decay=0.95)
 
 # execute force scheme
 start = timer()
-#projection = nfs.fit_transform(X=x, starting_projection_mode=ProjectionMode.RANDOM, random_state=1)
-#projection = nfs.fit_transform(X=x, Xd=data, starting_projection_mode=ProjectionMode.TSNE, random_state=1)
-projection = nfs.fit_transform(X=x, Xd=data, starting_projection_mode=ProjectionMode.PCA, random_state=1)
+#projection = nfs.fit_transform(X=data, starting_projection_mode=ProjectionMode.RANDOM, random_state=1)
+#projection = nfs.fit_transform(X=data, Xd=data, starting_projection_mode=ProjectionMode.TSNE, random_state=1)
+projection = nfs.fit_transform(X=data, Xd=data, starting_projection_mode=ProjectionMode.PCA, random_state=1)
 error = nfs.projection_error_
 end = timer()
 

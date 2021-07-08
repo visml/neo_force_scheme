@@ -6,9 +6,11 @@ from typing import Optional
 
 import numpy as np
 from sklearn.base import BaseEstimator
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 from sklearn.utils.validation import check_is_fitted
 
-from . import utils, distances, tsne, pca
+from . import utils, distances
 
 TPB = 16
 
@@ -171,7 +173,6 @@ class NeoForceScheme(BaseEstimator):
 
     def transform(
             self,
-            X: Optional[np.array] = None,
             Xd: Optional[np.array] = None,
             *,
             starting_projection_mode: Optional[ProjectionMode] = ProjectionMode.RANDOM,
@@ -207,14 +208,16 @@ class NeoForceScheme(BaseEstimator):
         if starting_projection_mode is not None:
             # randomly initialize the projection
             if starting_projection_mode == ProjectionMode.RANDOM:
+                # print(starting_projection_mode)
                 Xd = np.random.random((size, n_dimension))
             # initialize the projection with tsne
             elif starting_projection_mode == ProjectionMode.TSNE:
-                Xd = tsne.excute_tsne(X, n_dimension=n_dimension)
+                # TODO: Allow user input for tsne iteration time.
+                # Note: bigger the iteration time, larger the final kruskal stress.
+                Xd = TSNE(n_components=n_dimension, n_iter=300).fit_transform(Xd)
             # initialize the projection with pca
             elif starting_projection_mode == ProjectionMode.PCA:
-                Xd = pca.excute_pca(X, n_dimension=n_dimension)
-
+                Xd = PCA(n_components=n_dimension).fit_transform(Xd)
         index = np.random.permutation(size)
 
         if n_dimension > 3:
@@ -228,7 +231,6 @@ class NeoForceScheme(BaseEstimator):
         else:
             Xd, self.projection_error_ = self._transform(Xd, index=index, total=total, inplace=inpalce,
                                                          n_dimension=n_dimension)
-
         for i in range(size):
             for index in range(n_dimension):
                 Xd[i][index] -= min(Xd[:, index])
