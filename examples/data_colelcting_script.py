@@ -217,7 +217,7 @@ read_excel_xls(book_name_xls)
 ##########################################　whr2019_label_included
 
 raw_data = pandas.read_csv(
-    "./whr2019test.csv",
+    "./whr2019.csv",
     sep=",")
 dataset = raw_data.values
 
@@ -247,7 +247,7 @@ read_excel_xls(book_name_xls)
 
 
 raw_data = pandas.read_csv(
-    "./whr2019test.csv",
+    "./whr2019.csv",
     sep=",")
 dataset = raw_data.values
 
