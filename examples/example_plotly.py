@@ -2,6 +2,7 @@ from datetime import timedelta
 from timeit import default_timer as timer
 
 import numpy as np
+import pandas as pd
 from sklearn import datasets
 
 from neo_force_scheme import NeoForceScheme, ProjectionMode
@@ -9,13 +10,14 @@ from neo_force_scheme import NeoForceScheme, ProjectionMode
 #################################
 projection_n_dimensions = 3
 nfs = NeoForceScheme(metric="euclidean", verbose=True, learning_rate0=0.5,
-                     decay=0.95, max_it=500, cuda=False)
+                     decay=0.95, max_it=100, cuda=False)
 starting_projection_mode = ProjectionMode.RANDOM
 plot = True
 
-data = np.loadtxt('./mammals.data', delimiter=",")
-# data = datasets.load_iris().data
-# data = datasets.load_breast_cancer().data
+# data = np.loadtxt('./datasets/mammals.data', delimiter=",")
+data = pd.read_csv('./datasets/whr2019.csv', delimiter=",").values
+# data = np.concatenate((datasets.load_iris().data.T,[datasets.load_iris().target.T])).T
+# data = np.concatenate((datasets.load_breast_cancer().data.T,[datasets.load_breast_cancer().target.T])).T
 # data = np.tile(data, (100, 1)) # use this make the dataset 100x larger for performance test
 
 #################################
@@ -78,7 +80,7 @@ if plot:
                 mode='markers',
                 marker=dict(
                     size=16,
-                    color=np.random.randn(500),
+                    color=np.random.randn(500) if t is None else t,
                     colorscale='Viridis',
                     showscale=True)
             )
@@ -94,7 +96,7 @@ if plot:
                                mode='markers',
                                marker=dict(
                                    size=12,
-                                   color=projection[:, 2],  # set color to an array/list of desired values
+                                   color=np.random.randn(500) if t is None else t,  # set color to an array/list of desired values
                                    colorscale='Viridis',  # choose a colorscale
                                    opacity=0.8
                                )
