@@ -1,19 +1,15 @@
-from datetime import timedelta
-from timeit import default_timer as timer
+import os
+
 import numpy as np
 # Read data from a csv
 import pandas
-from sklearn import datasets
+import plotly.graph_objects as go
 import xlrd
 import xlwt
+from sklearn import datasets
 from xlutils.copy import copy
-import os
-import plotly.io.orca as orca
-import plotly.graph_objects as go
-import plotly.io as io
-import plotly.data as pldata
 
-from neo_force_scheme import NeoForceScheme, ProjectionMode, kruskal_stress
+from neo_force_scheme import NeoForceScheme, ProjectionMode
 
 
 def datacollecting(n_dimension,
@@ -29,7 +25,6 @@ def datacollecting(n_dimension,
                    X_excp=None,
                    Xd_excp=None,
                    num_process_axis=None):
-
     # read the distance matrix
     nfs = NeoForceScheme(verbose=False, learning_rate0=learning_rate, decay=decay, max_it=max_iteration)
 
@@ -93,11 +88,11 @@ def datacollecting(n_dimension,
                                    opacity=0.8
                                )
                                )])
-    fig_name = str(n_dimension)+"d_"+str(learning_rate)+"_"+str(decay)+\
-               "_"+str(max_iteration)+"_"+starting_projection_name+"_"+\
-               dataname+"_"+str(fixed_axis)+"_"+str(X_excp)+"_"+str(scaler)
+    fig_name = str(n_dimension) + "d_" + str(learning_rate) + "_" + str(decay) + \
+               "_" + str(max_iteration) + "_" + starting_projection_name + "_" + \
+               dataname + "_" + str(fixed_axis) + "_" + str(X_excp) + "_" + str(scaler)
 
-    fig_path = fig_path+"/"+fig_name+".png"
+    fig_path = fig_path + "/" + fig_name + ".png"
     fig.write_image(fig_path, engine="kaleido")
     print(value)
     return value
@@ -112,6 +107,7 @@ def write_excel_xls(path, sheet_name, values):
             sheet.write(i, j, values[i][j])
     workbook.save(path)
 
+
 def write_sheet_xls(path, sheet_name, value):
     index = len(value)
     rb = xlrd.open_workbook(path, formatting_info=True)
@@ -121,6 +117,7 @@ def write_sheet_xls(path, sheet_name, value):
         for j in range(0, len(value[i])):
             sheet.write(i, j, value[i][j])
     workbook.save(path)
+
 
 def write_excel_xls_append(path, value):
     index = len(value)
@@ -132,7 +129,7 @@ def write_excel_xls_append(path, value):
     new_worksheet = new_workbook.get_sheet(-1)
     for i in range(0, index):
         for j in range(0, len(value[i])):
-            new_worksheet.write(i+rows_old, j, value[i][j])
+            new_worksheet.write(i + rows_old, j, value[i][j])
     new_workbook.save(path)
 
 
@@ -159,7 +156,6 @@ def loop_script(dataset,
                 X_excp=None,
                 Xd_excp=None,
                 num_process_axis=None):
-
     for nd in nd_list:
         for lr in lr_list:
             for dc in dc_list:
@@ -198,10 +194,10 @@ dataset = np.loadtxt('./mammals.data', delimiter=",")
 
 dataname = 'mammals'
 
-#sheet_name_xls = 'test_run_data_'+dataname
-fig_path = 'images/'+dataname+'_fixed_axis_images'
+# sheet_name_xls = 'test_run_data_'+dataname
+fig_path = 'images/' + dataname + '_fixed_axis_images'
 
-#write_sheet_xls(book_name_xls, sheet_name_xls, value_title)
+# write_sheet_xls(book_name_xls, sheet_name_xls, value_title)
 loop_script(dataset=dataset,
             dataname=dataname,
             scaler_list=scaler_list,
@@ -218,20 +214,19 @@ loop_script(dataset=dataset,
 
 read_excel_xls(book_name_xls)
 
-
 ##########################################　whr2019_label_included
 
 raw_data = pandas.read_csv(
-        "./whr2019test.csv",
-        sep=",")
+    "./whr2019test.csv",
+    sep=",")
 dataset = raw_data.values
 
 dataname = 'whr2019_included'
 
-#sheet_name_xls = 'test_run_data_'+dataname
-fig_path = 'images/'+dataname+'_fixed_axis_images'
+# sheet_name_xls = 'test_run_data_'+dataname
+fig_path = 'images/' + dataname + '_fixed_axis_images'
 
-#write_sheet_xls(book_name_xls, sheet_name_xls, value_title)
+# write_sheet_xls(book_name_xls, sheet_name_xls, value_title)
 loop_script(dataset=dataset,
             dataname=dataname,
             scaler_list=scaler_list,
@@ -252,16 +247,16 @@ read_excel_xls(book_name_xls)
 
 
 raw_data = pandas.read_csv(
-        "./whr2019test.csv",
-        sep=",")
+    "./whr2019test.csv",
+    sep=",")
 dataset = raw_data.values
 
 dataname = 'whr2019'
 
-#sheet_name_xls = 'test_run_data_'+dataname
-fig_path = 'images/'+dataname+'_fixed_axis_images'
+# sheet_name_xls = 'test_run_data_'+dataname
+fig_path = 'images/' + dataname + '_fixed_axis_images'
 
-#write_sheet_xls(book_name_xls, sheet_name_xls, value_title)
+# write_sheet_xls(book_name_xls, sheet_name_xls, value_title)
 loop_script(dataset=dataset,
             dataname=dataname,
             scaler_list=scaler_list,
@@ -281,16 +276,16 @@ read_excel_xls(book_name_xls)
 ##########################################　image_segmentation
 
 raw_data = pandas.read_csv(
-        "./segmentation-normcols.csv",
-        sep=",")
+    "./segmentation-normcols.csv",
+    sep=",")
 dataset = raw_data.values
 
 dataname = 'segmentation'
 
-#sheet_name_xls = 'test_run_data_'+dataname
-fig_path = 'images/'+dataname+'_fixed_axis_images'
+# sheet_name_xls = 'test_run_data_'+dataname
+fig_path = 'images/' + dataname + '_fixed_axis_images'
 
-#write_sheet_xls(book_name_xls, sheet_name_xls, value_title)
+# write_sheet_xls(book_name_xls, sheet_name_xls, value_title)
 loop_script(dataset=dataset,
             dataname=dataname,
             scaler_list=scaler_list,
@@ -301,25 +296,24 @@ loop_script(dataset=dataset,
             start_project=start_project,
             fig_path=fig_path,
             fixed_axis=-1,
-            X_excp=[0,-1],
-            Xd_excp=[0,-1],
+            X_excp=[0, -1],
+            Xd_excp=[0, -1],
             num_process_axis=None)
 
 read_excel_xls(book_name_xls)
-
 
 ##########################################　cancer
 
 dataset = datasets.load_breast_cancer().data
-label = datasets.load_breast_cancer().target.reshape(len(dataset),1)
+label = datasets.load_breast_cancer().target.reshape(len(dataset), 1)
 dataset = np.concatenate((dataset, label), axis=1)
 
 dataname = 'cancer'
 
-#sheet_name_xls = 'test_run_data_'+dataname
-fig_path = 'images/'+dataname+'_fixed_axis_images'
+# sheet_name_xls = 'test_run_data_'+dataname
+fig_path = 'images/' + dataname + '_fixed_axis_images'
 
-#write_sheet_xls(book_name_xls, sheet_name_xls, value_title)
+# write_sheet_xls(book_name_xls, sheet_name_xls, value_title)
 loop_script(dataset=dataset,
             dataname=dataname,
             scaler_list=scaler_list,
@@ -335,20 +329,19 @@ loop_script(dataset=dataset,
             num_process_axis=None)
 
 read_excel_xls(book_name_xls)
-
 
 ##########################################　iris
 
 dataset = datasets.load_iris().data
-label = datasets.load_iris().target.reshape(len(dataset),1)
+label = datasets.load_iris().target.reshape(len(dataset), 1)
 dataset = np.concatenate((dataset, label), axis=1)
 
 dataname = 'iris'
 
-#sheet_name_xls = 'test_run_data_'+dataname
-fig_path = 'images/'+dataname+'_fixed_axis_images'
+# sheet_name_xls = 'test_run_data_'+dataname
+fig_path = 'images/' + dataname + '_fixed_axis_images'
 
-#write_sheet_xls(book_name_xls, sheet_name_xls, value_title)
+# write_sheet_xls(book_name_xls, sheet_name_xls, value_title)
 loop_script(dataset=dataset,
             dataname=dataname,
             scaler_list=scaler_list,
@@ -364,20 +357,19 @@ loop_script(dataset=dataset,
             num_process_axis=None)
 
 read_excel_xls(book_name_xls)
-
 
 ##########################################　boston
 
 dataset = datasets.load_boston().data
-label = datasets.load_boston().target.reshape(len(dataset),1)
+label = datasets.load_boston().target.reshape(len(dataset), 1)
 dataset = np.concatenate((dataset, label), axis=1)
 
 dataname = 'boston'
 
-#sheet_name_xls = 'test_run_data_'+dataname
-fig_path = 'images/'+dataname+'_fixed_axis_images'
+# sheet_name_xls = 'test_run_data_'+dataname
+fig_path = 'images/' + dataname + '_fixed_axis_images'
 
-#write_sheet_xls(book_name_xls, sheet_name_xls, value_title)
+# write_sheet_xls(book_name_xls, sheet_name_xls, value_title)
 loop_script(dataset=dataset,
             dataname=dataname,
             scaler_list=scaler_list,
@@ -394,19 +386,18 @@ loop_script(dataset=dataset,
 
 read_excel_xls(book_name_xls)
 
-
 ##########################################　diabetes
 
 dataset = datasets.load_diabetes().data
-label = datasets.load_diabetes().target.reshape(len(dataset),1)
+label = datasets.load_diabetes().target.reshape(len(dataset), 1)
 dataset = np.concatenate((dataset, label), axis=1)
 
 dataname = 'diabetes'
 
-#sheet_name_xls = 'test_run_data_'+dataname
-fig_path = 'images/'+dataname+'_fixed_axis_images'
+# sheet_name_xls = 'test_run_data_'+dataname
+fig_path = 'images/' + dataname + '_fixed_axis_images'
 
-#write_sheet_xls(book_name_xls, sheet_name_xls, value_title)
+# write_sheet_xls(book_name_xls, sheet_name_xls, value_title)
 loop_script(dataset=dataset,
             dataname=dataname,
             scaler_list=scaler_list,

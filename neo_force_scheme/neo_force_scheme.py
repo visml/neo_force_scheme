@@ -11,8 +11,8 @@ from sklearn.manifold import TSNE
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils.validation import check_is_fitted
 
-from .engines import neo_force_scheme_cpu
 from . import distances
+from .engines import neo_force_scheme_cpu
 
 
 class ProjectionMode(Enum):
@@ -218,7 +218,8 @@ class NeoForceScheme(BaseEstimator):
             elif starting_projection_mode == ProjectionMode.TSNE:
                 # TODO: Allow user input for tsne iteration time.
                 # Note: bigger the iteration time, larger the final kruskal stress.
-                Xd = TSNE(n_components=n_dimension, n_iter=self.max_it, n_jobs=self.n_jobs, random_state=random_state).fit_transform(Xd)
+                Xd = TSNE(n_components=n_dimension, n_iter=self.max_it, n_jobs=self.n_jobs,
+                          random_state=random_state).fit_transform(Xd)
             # initialize the projection with pca
             elif starting_projection_mode == ProjectionMode.PCA:
                 Xd = PCA(n_components=n_dimension, random_state=random_state).fit_transform(Xd)
@@ -233,7 +234,8 @@ class NeoForceScheme(BaseEstimator):
             raise NotImplementedError('projection for a dimension bigger than 3 is not implemented yet!')
 
         if self.cuda:
-            Xd, self.projection_error_ = self._gpu_transform(Xd, index=index, total=total, inplace=inpalce, n_dimension=n_dimension)
+            Xd, self.projection_error_ = self._gpu_transform(Xd, index=index, total=total, inplace=inpalce,
+                                                             n_dimension=n_dimension)
         else:
             Xd, self.projection_error_ = self._transform(Xd, index=index, total=total, inplace=inpalce,
                                                          n_dimension=n_dimension)
@@ -274,7 +276,7 @@ class NeoForceScheme(BaseEstimator):
 
     def fit_transform(self, data, fixed_axis=None,
                       X_exception_axes=None, Xd_exception_axes=None,
-                      scaler = False,
+                      scaler=False,
                       **kwargs):
         """Fit X into an embedded space and return that transformed
         output.
@@ -309,7 +311,7 @@ class NeoForceScheme(BaseEstimator):
                                                    X_exception_axes=X_exception_axes,
                                                    Xd_exception_axes=Xd_exception_axes)
 
-        #test2
+        # test2
         if scaler is not False:
             X = self.scaler_data(X, scaler)
             Xd = self.scaler_data(Xd, scaler)
@@ -346,10 +348,9 @@ class NeoForceScheme(BaseEstimator):
         if distance_matrix is None:
             distance_matrix = self.embedding_
         if distance_matrix is None:
-            raise Exception('Please run a transform operation or provide a custom distance matrix before calling the score')
+            raise Exception(
+                'Please run a transform operation or provide a custom distance matrix before calling the score')
         return neo_force_scheme_cpu.kruskal_stress(self.embedding_, projection, self.metric)
-
-
 
     def scaler_data(self, data, feature_range):
         scaler = MinMaxScaler(feature_range=feature_range)

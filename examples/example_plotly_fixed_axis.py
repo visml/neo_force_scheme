@@ -2,7 +2,6 @@ from datetime import timedelta
 from timeit import default_timer as timer
 
 import numpy as np
-from sklearn import datasets
 
 from neo_force_scheme import NeoForceScheme, ProjectionMode
 
