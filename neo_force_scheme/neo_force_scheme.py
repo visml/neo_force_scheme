@@ -15,11 +15,8 @@ from sklearn.utils.validation import check_is_fitted
 
 from . import distances
 from .engines import neo_force_scheme_cpu
-<<<<<<< HEAD
-=======
 from .engines.neo_force_scheme_cpu import scale_dataset
 from .engines.new_technique import preprocess_data
->>>>>>> upstream/master
 
 
 class ProjectionMode(Enum):
@@ -169,11 +166,8 @@ class NeoForceScheme(BaseEstimator):
         self.embedding_ = neo_force_scheme_cpu.create_triangular_distance_matrix(X, self.metric)
         self.print(f'Distance matrix size in memory: ', round(getsizeof(self.embedding_) / 1024 / 1024, 2), 'MB')
 
-<<<<<<< HEAD
-    def _transform(self, X, *, index, total, inplace, n_dimension: Optional[int] = 2, fixed_column=None):
-=======
+
     def _transform(self, X, *, index, total, inplace, n_dimension: Optional[int] = 2, force_projection_dimensions=None):
->>>>>>> upstream/master
         # iterate until max_it or if the error does not change more than the tolerance
         error = math.inf
         for k in range(self.max_it):
@@ -184,11 +178,7 @@ class NeoForceScheme(BaseEstimator):
                                                        learning_rate=learning_rate,
                                                        n_dimension=n_dimension,
                                                        metric=self.metric,
-<<<<<<< HEAD
-                                                       fixed_column=fixed_column)
-=======
                                                        force_projection_dimensions=force_projection_dimensions)
->>>>>>> upstream/master
 
             if math.fabs(new_error - error) < self.tolerance:
                 self.print(f'Error below tolerance {math.fabs(new_error - error)} in iteration {k}, breaking')
@@ -206,12 +196,8 @@ class NeoForceScheme(BaseEstimator):
             inplace: bool = True,  # TODO: implement False
             random_state: float = None,
             n_dimension: Optional[int] = 2,
-<<<<<<< HEAD
-            fixed_column=None
-=======
             fix_column_to_z_projection_axis=None,
             X=None,
->>>>>>> upstream/master
     ):
         """Transform X into the existing embedded space and return that
         transformed output.
@@ -253,15 +239,7 @@ class NeoForceScheme(BaseEstimator):
             # initialize the projection with pca
             elif starting_projection_mode == ProjectionMode.PCA:
                 Xd = PCA(n_components=n_dimension, random_state=random_state).fit_transform(Xd)
-<<<<<<< HEAD
 
-        # Manually set z axis to be a certain feature
-        if fixed_column is not None:
-            for index in range(len(Xd)):
-                Xd[index][-1] = fixed_column[index]
-
-        index = np.random.permutation(size)
-=======
         elif Xd is None:
             raise Exception('Either Xd needs to be provided or a starting_projection_mode needs to be chosen')
 
@@ -269,40 +247,11 @@ class NeoForceScheme(BaseEstimator):
         force_projection_dimensions = None
         if fix_column_to_z_projection_axis is not None:
             force_projection_dimensions = np.arange(n_dimension - 1)
->>>>>>> upstream/master
 
         if n_dimension > 3:
             raise NotImplementedError('projection for a dimension bigger than 3 is not implemented yet!')
 
         if self.cuda:
-<<<<<<< HEAD
-            Xd, self.projection_error_ = self._gpu_transform(Xd, index=index, total=total, inplace=inpalce,
-                                                             n_dimension=n_dimension)
-        else:
-            Xd, self.projection_error_ = self._transform(Xd, index=index, total=total, inplace=inpalce,
-                                                         n_dimension=n_dimension, fixed_column=fixed_column)
-
-        #################????????
-        if (n_dimension == 2):
-            min_x = min(Xd[:, 0])
-            min_y = min(Xd[:, 1])
-            for i in range(size):
-                Xd[i][0] -= min_x
-                Xd[i][1] -= min_y
-        elif (n_dimension == 3):
-            min_x = min(Xd[:, 0])
-            min_y = min(Xd[:, 1])
-            min_z = min(Xd[:, 2])
-            for i in range(size):
-                Xd[i][0] -= min_x
-                Xd[i][1] -= min_y
-                Xd[i][2] -= min_z
-        """
-        for i in range(size):
-            for index in range(n_dimension):
-                Xd[i][index] -= min(Xd[:, index])"""
-        #########################?????
-=======
             Xd, self.projection_error_ = self._gpu_transform(Xd, index=index, total=total, inplace=inplace,
                                                              n_dimension=n_dimension)
         else:
@@ -312,7 +261,6 @@ class NeoForceScheme(BaseEstimator):
 
         Xmin = Xd.min(axis=0)
         Xd = Xd - Xmin
->>>>>>> upstream/master
 
         if fix_column_to_z_projection_axis is not None:
             Xd[:, n_dimension-1] = X[:, fix_column_to_z_projection_axis]
@@ -330,13 +278,7 @@ class NeoForceScheme(BaseEstimator):
             traceback.print_stack()
             return self._transform(X, index=index, total=total, inplace=inplace)
 
-<<<<<<< HEAD
-    def fit_transform(self, data, fixed_axis=None,
-                      X_exception_axes=None, Xd_exception_axes=None,
-                      scaler=False,
-                      **kwargs):
-        """Fit X into an embedded space and return that transformed
-=======
+
     def fit_transform(self,
                       X: np.array,
                       *,
@@ -347,7 +289,6 @@ class NeoForceScheme(BaseEstimator):
                       **kwargs):
         """
         Fit X into an embedded space and return that transformed
->>>>>>> upstream/master
         output.
         :param X: dataset as ndarray of shape (n_samples, n_features) or (n_samples, n_samples)
             If the metric is 'precomputed' X must be a square distance
@@ -356,37 +297,6 @@ class NeoForceScheme(BaseEstimator):
             Starting configuration of the projection result. By default it is ignored,
             and the starting projection is randomized using starting_projection_mode and random_state.
             If specified, this must match n_samples.
-<<<<<<< HEAD
-        starting_projection_mode: one of [RANDOM], [PCA], [TSNE]
-            Specifies the starting values of the projection.
-            Utilize if X is None
-        inpalce: boolean
-            Specifies whether X will be changed inplace during ForceScheme projection
-        random_state: float
-            Specifies the starting random state used for randomization
-        Returns
-        -------
-        X_new : ndarray of shape (n_samples, 2)
-            Embedding of the training data in low-dimensional space.
-        """
-        """
-        #test1
-        if scaler is not False:
-            data = self.scaler_data(data, scaler)
-
-        """
-        X, Xd, fixed_column = self.processing_data(data=data, fixed_axis=fixed_axis,
-                                                   X_exception_axes=X_exception_axes,
-                                                   Xd_exception_axes=Xd_exception_axes)
-
-        # test2
-        if scaler is not False:
-            X = self.scaler_data(X, scaler)
-            Xd = self.scaler_data(Xd, scaler)
-
-        self._fit(X)
-        return self.transform(Xd, fixed_column=fixed_column, **kwargs)
-=======
         :param fix_column_to_z_projection_axis:
         :param drop_columns_from_dataset:
         :param Xd_exception_axes:
@@ -408,7 +318,6 @@ class NeoForceScheme(BaseEstimator):
         end = timer()
         self.print(f'Time elapsed: {timedelta(seconds=end - start)}')
         return ret
->>>>>>> upstream/master
 
     def fit(self, X, y=None,
             scaler=(0, 1),
@@ -445,58 +354,8 @@ class NeoForceScheme(BaseEstimator):
         if distance_matrix is None:
             raise Exception(
                 'Please run a transform operation or provide a custom distance matrix before calling the score')
-<<<<<<< HEAD
-        return neo_force_scheme_cpu.kruskal_stress(self.embedding_, projection, self.metric)
-
-    def scaler_data(self, data, feature_range):
-        scaler = MinMaxScaler(feature_range=feature_range)
-        data = scaler.fit_transform(data)
-        """
-        data_scalared = data
-        scaler = StandardScaler()
-        data = scaler.fit_transform(data, data_scalared)
-        """
-        return data
-
-    def processing_data(self, data, fixed_axis=None,
-                        Xd_exception_axes=None, X_exception_axes=None):
-
-        if fixed_axis is not None:
-            fixed_column = [[data[0][fixed_axis]]]
-            for index in range(1, len(data)):
-                fixed_column = np.append(fixed_column, [[data[index][fixed_axis]]], axis=0)
-        else:
-            fixed_column = None
-
-        X = data
-        Xd = data
-
-        if X_exception_axes is not None:
-            X = np.delete(data, X_exception_axes, axis=1)
-
-        if Xd_exception_axes is not None:
-            Xd = np.delete(data, Xd_exception_axes, axis=1)
-
-        return X, Xd, fixed_column
-
-    def non_numeric_processor(self, data, axes=None):
-        for col in axes:
-            non_numeric = [data[0][col]]
-            data[0][col] = 0
-
-            # if the name(string) appears the first time, add it into the name list
-            # then assign it an integer
-            # if it has shown before, change it into its assigned integer
-
-            for index in range(1, len(data)):
-                if data[index][col] not in non_numeric:
-                    non_numeric.append(data[index][col])
-                data[index][col] = non_numeric.index(data[index][col])
-        return data
-=======
-
         ret = np.copy(projection)
         if scaler is not None:
             ret = scale_dataset(ret, scaler)
         return neo_force_scheme_cpu.kruskal_stress(self.embedding_, ret, self.metric)
->>>>>>> upstream/master
+
