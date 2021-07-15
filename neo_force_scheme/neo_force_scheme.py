@@ -8,10 +8,11 @@ import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils.validation import check_is_fitted
 
-from .engines import neo_force_scheme_cpu
 from . import distances
+from .engines import neo_force_scheme_cpu
 
 
 class ProjectionMode(Enum):
@@ -22,16 +23,13 @@ class ProjectionMode(Enum):
 
 class NeoForceScheme(BaseEstimator):
     """ForceScheme Projection technique.
-
     Force Scheme is???
-
     It is highly recommended to use another dimensionality reduction
     method (e.g. PCA for dense data or TruncatedSVD for sparse data)
     to reduce the number of dimensions to a reasonable amount (e.g. 50)
     if the number of features is very high. This will suppress some
     noise and speed up the computation of pairwise distances between
     samples. For more tips see Laurens van der Maaten's FAQ [2].
-
         Parameters
         ----------
         learning_rate : float, default=200.0
@@ -84,7 +82,7 @@ class NeoForceScheme(BaseEstimator):
             will run on the slower, but exact, algorithm in O(N^2) time. The
             exact algorithm should be used when nearest-neighbor errors need
             to be better than 3%. However, the exact method cannot scale to
-            millions of examples.
+            millions of examples_old.
             .. versionadded:: 0.17
                Approximate optimization *method* via the Barnes-Hut.
         Attributes
@@ -157,7 +155,7 @@ class NeoForceScheme(BaseEstimator):
         self.embedding_ = neo_force_scheme_cpu.create_triangular_distance_matrix(X, self.metric)
         self.print(f'Distance matrix size in memory: ', round(getsizeof(self.embedding_) / 1024 / 1024, 2), 'MB')
 
-    def _transform(self, X, *, index, total, inplace, n_dimension: Optional[int] = 2):
+    def _transform(self, X, *, index, total, inplace, n_dimension: Optional[int] = 2, fixed_column=None):
         # iterate until max_it or if the error does not change more than the tolerance
         error = math.inf
         for k in range(self.max_it):
@@ -167,7 +165,8 @@ class NeoForceScheme(BaseEstimator):
                                                        projection=X,
                                                        learning_rate=learning_rate,
                                                        n_dimension=n_dimension,
-                                                       metric=self.metric)
+                                                       metric=self.metric,
+                                                       fixed_column=fixed_column)
 
             if math.fabs(new_error - error) < self.tolerance:
                 self.print(f'Error below tolerance {math.fabs(new_error - error)} in iteration {k}, breaking')
@@ -185,6 +184,7 @@ class NeoForceScheme(BaseEstimator):
             inpalce: bool = True,  # TODO: implement False
             random_state: float = None,
             n_dimension: Optional[int] = 2,
+            fixed_column=None
     ):
         """Transform X into the existing embedded space and return that
         transformed output.
@@ -197,7 +197,6 @@ class NeoForceScheme(BaseEstimator):
             Utilize if X is None
         inpalce: boolean
             Specifies whether X will be changed inplace during ForceScheme projection
-
         Returns
         -------
         X_new : array, shape (n_samples, n_components)
@@ -219,23 +218,49 @@ class NeoForceScheme(BaseEstimator):
             elif starting_projection_mode == ProjectionMode.TSNE:
                 # TODO: Allow user input for tsne iteration time.
                 # Note: bigger the iteration time, larger the final kruskal stress.
-                Xd = TSNE(n_components=n_dimension, n_iter=self.max_it, n_jobs=self.n_jobs, random_state=random_state).fit_transform(Xd)
+                Xd = TSNE(n_components=n_dimension, n_iter=self.max_it, n_jobs=self.n_jobs,
+                          random_state=random_state).fit_transform(Xd)
             # initialize the projection with pca
             elif starting_projection_mode == ProjectionMode.PCA:
                 Xd = PCA(n_components=n_dimension, random_state=random_state).fit_transform(Xd)
+
+        # Manually set z axis to be a certain feature
+        if fixed_column is not None:
+            for index in range(len(Xd)):
+                Xd[index][-1] = fixed_column[index]
+
         index = np.random.permutation(size)
 
         if n_dimension > 3:
             raise NotImplementedError('projection for a dimension bigger than 3 is not implemented yet!')
 
         if self.cuda:
-            Xd, self.projection_error_ = self._gpu_transform(Xd, index=index, total=total, inplace=inpalce, n_dimension=n_dimension)
+            Xd, self.projection_error_ = self._gpu_transform(Xd, index=index, total=total, inplace=inpalce,
+                                                             n_dimension=n_dimension)
         else:
             Xd, self.projection_error_ = self._transform(Xd, index=index, total=total, inplace=inpalce,
-                                                         n_dimension=n_dimension)
+                                                         n_dimension=n_dimension, fixed_column=fixed_column)
+
+        #################????????
+        if (n_dimension == 2):
+            min_x = min(Xd[:, 0])
+            min_y = min(Xd[:, 1])
+            for i in range(size):
+                Xd[i][0] -= min_x
+                Xd[i][1] -= min_y
+        elif (n_dimension == 3):
+            min_x = min(Xd[:, 0])
+            min_y = min(Xd[:, 1])
+            min_z = min(Xd[:, 2])
+            for i in range(size):
+                Xd[i][0] -= min_x
+                Xd[i][1] -= min_y
+                Xd[i][2] -= min_z
+        """
         for i in range(size):
             for index in range(n_dimension):
-                Xd[i][index] -= min(Xd[:, index])
+                Xd[i][index] -= min(Xd[:, index])"""
+        #########################?????
 
         return Xd
 
@@ -251,7 +276,10 @@ class NeoForceScheme(BaseEstimator):
             traceback.print_stack()
             return self._transform(X, index=index, total=total, inplace=inplace)
 
-    def fit_transform(self, X, Xd=None, **kwargs):
+    def fit_transform(self, data, fixed_axis=None,
+                      X_exception_axes=None, Xd_exception_axes=None,
+                      scaler=False,
+                      **kwargs):
         """Fit X into an embedded space and return that transformed
         output.
         Parameters
@@ -270,14 +298,28 @@ class NeoForceScheme(BaseEstimator):
             Specifies whether X will be changed inplace during ForceScheme projection
         random_state: float
             Specifies the starting random state used for randomization
-
         Returns
         -------
         X_new : ndarray of shape (n_samples, 2)
             Embedding of the training data in low-dimensional space.
         """
+        """
+        #test1
+        if scaler is not False:
+            data = self.scaler_data(data, scaler)
+
+        """
+        X, Xd, fixed_column = self.processing_data(data=data, fixed_axis=fixed_axis,
+                                                   X_exception_axes=X_exception_axes,
+                                                   Xd_exception_axes=Xd_exception_axes)
+
+        # test2
+        if scaler is not False:
+            X = self.scaler_data(X, scaler)
+            Xd = self.scaler_data(Xd, scaler)
+
         self._fit(X)
-        return self.transform(Xd, **kwargs)
+        return self.transform(Xd, fixed_column=fixed_column, **kwargs)
 
     def fit(self, X, y=None):
         """Fit X into an embedded space.
@@ -299,7 +341,6 @@ class NeoForceScheme(BaseEstimator):
         projection : ndarray of shape (n_samples, 2)
             Result of the transform operation (aka the resulting projection)
         distance_matrix : Optional custom distance matrix to calculate the score from
-
         Returns
         -------
         score: the kruskal_stress between 0 and 1. Represents how well the projection represents the original distances.
@@ -309,5 +350,52 @@ class NeoForceScheme(BaseEstimator):
         if distance_matrix is None:
             distance_matrix = self.embedding_
         if distance_matrix is None:
-            raise Exception('Please run a transform operation or provide a custom distance matrix before calling the score')
+            raise Exception(
+                'Please run a transform operation or provide a custom distance matrix before calling the score')
         return neo_force_scheme_cpu.kruskal_stress(self.embedding_, projection, self.metric)
+
+    def scaler_data(self, data, feature_range):
+        scaler = MinMaxScaler(feature_range=feature_range)
+        data = scaler.fit_transform(data)
+        """
+        data_scalared = data
+        scaler = StandardScaler()
+        data = scaler.fit_transform(data, data_scalared)
+        """
+        return data
+
+    def processing_data(self, data, fixed_axis=None,
+                        Xd_exception_axes=None, X_exception_axes=None):
+
+        if fixed_axis is not None:
+            fixed_column = [[data[0][fixed_axis]]]
+            for index in range(1, len(data)):
+                fixed_column = np.append(fixed_column, [[data[index][fixed_axis]]], axis=0)
+        else:
+            fixed_column = None
+
+        X = data
+        Xd = data
+
+        if X_exception_axes is not None:
+            X = np.delete(data, X_exception_axes, axis=1)
+
+        if Xd_exception_axes is not None:
+            Xd = np.delete(data, Xd_exception_axes, axis=1)
+
+        return X, Xd, fixed_column
+
+    def non_numeric_processor(self, data, axes=None):
+        for col in axes:
+            non_numeric = [data[0][col]]
+            data[0][col] = 0
+
+            # if the name(string) appears the first time, add it into the name list
+            # then assign it an integer
+            # if it has shown before, change it into its assigned integer
+
+            for index in range(1, len(data)):
+                if data[index][col] not in non_numeric:
+                    non_numeric.append(data[index][col])
+                data[index][col] = non_numeric.index(data[index][col])
+        return data
