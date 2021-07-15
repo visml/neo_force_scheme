@@ -3,6 +3,7 @@ import pickle
 
 import numba
 import numpy as np
+from sklearn.preprocessing import MinMaxScaler
 
 MACHINE_EPSILON = np.finfo(np.double).eps
 
@@ -43,7 +44,7 @@ def pickle_save_matrix(filename, distance_matrix, size):
 
 
 @numba.njit(parallel=True, fastmath=True)
-def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric, fixed_column=None):
+def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric, force_projection_dimensions=None):
     size = len(projection)
     total = len(distance_matrix)
     error = 0
@@ -68,8 +69,8 @@ def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric, 
             error += math.fabs(delta)
 
             # If fixing z axis, only move x and y
-            if fixed_column is not None:
-                for index in range(n_dimension - 1):
+            if force_projection_dimensions is not None:
+                for index in force_projection_dimensions:
                     projection[ins2][index] += learning_rate * delta * (temp_dist[index] / dr2)
 
             else:
@@ -80,7 +81,7 @@ def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric, 
 
 
 @numba.njit(parallel=True, fastmath=True)
-def iteration(index, distance_matrix, projection, learning_rate, n_dimension, metric, fixed_column=None):
+def iteration(index, distance_matrix, projection, learning_rate, n_dimension, metric, force_projection_dimensions=None):
     size = len(projection)
     error = 0
 
@@ -92,7 +93,7 @@ def iteration(index, distance_matrix, projection, learning_rate, n_dimension, me
                       learning_rate=learning_rate,
                       n_dimension=n_dimension,
                       metric=metric,
-                      fixed_column=fixed_column)
+                      force_projection_dimensions=force_projection_dimensions)
 
     return error / size
 
@@ -133,3 +134,36 @@ def kruskal_stress(distance_matrix, projection, metric):
             den += drn * drn
 
     return math.sqrt(num / den)
+
+
+def scale_dataset(data, feature_range):
+    """
+    Helper function for scaling/normalizing
+    """
+    scaler = MinMaxScaler(feature_range=feature_range)
+    data = scaler.fit_transform(data)
+    """
+    data_scalared = data
+    scaler = StandardScaler()
+    data = scaler.fit_transform(data, data_scalared)
+    """
+    return data
+
+
+def non_numeric_processor(data, axes=None):
+    """
+    Helper function for processing numeric columns
+    """
+    for col in axes:
+        non_numeric = [data[0][col]]
+        data[0][col] = 0
+
+        # if the name(string) appears the first time, add it into the name list
+        # then assign it an integer
+        # if it has shown before, change it into its assigned integer
+
+        for index in range(1, len(data)):
+            if data[index][col] not in non_numeric:
+                non_numeric.append(data[index][col])
+            data[index][col] = non_numeric.index(data[index][col])
+    return data

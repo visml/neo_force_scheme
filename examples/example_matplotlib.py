@@ -16,9 +16,9 @@ nfs = NeoForceScheme(metric="euclidean", verbose=True, learning_rate0=0.5,
 starting_projection_mode = ProjectionMode.RANDOM
 plot = True
 
-data = np.loadtxt('./mammals.data', delimiter=",")
-# data = datasets.load_iris().data
-# data = datasets.load_breast_cancer().data
+data = np.loadtxt('./datasets/mammals.data', delimiter=",")
+# data = np.concatenate((datasets.load_iris().data.T,[datasets.load_iris().target.T])).T
+# data = np.concatenate((datasets.load_breast_cancer().data.T,[datasets.load_breast_cancer().target.T])).T
 # data = np.tile(data, (100, 1)) # use this make the dataset 100x larger for performance test
 
 #################################
