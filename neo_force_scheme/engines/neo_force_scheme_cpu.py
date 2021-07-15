@@ -47,6 +47,7 @@ def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric, 
     size = len(projection)
     total = len(distance_matrix)
     error = 0
+
     for ins2 in numba.prange(size):
         if ins1 != ins2:
             temp_dist = np.zeros(n_dimension)
@@ -68,10 +69,12 @@ def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric, 
 
             # If fixing z axis, only move x and y
             if fixed_column is not None:
-                n_dimension = n_dimension - 1
+                for index in range(n_dimension - 1):
+                    projection[ins2][index] += learning_rate * delta * (temp_dist[index] / dr2)
 
-            for index in range(n_dimension):
-                projection[ins2][index] += learning_rate * delta * (temp_dist[index] / dr2)
+            else:
+                for index in range(n_dimension):
+                    projection[ins2][index] += learning_rate * delta * (temp_dist[index] / dr2)
 
     return error / size
 

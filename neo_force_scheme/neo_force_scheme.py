@@ -223,12 +223,13 @@ class NeoForceScheme(BaseEstimator):
             # initialize the projection with pca
             elif starting_projection_mode == ProjectionMode.PCA:
                 Xd = PCA(n_components=n_dimension, random_state=random_state).fit_transform(Xd)
-        index = np.random.permutation(size)
 
         # Manually set z axis to be a certain feature
         if fixed_column is not None:
             for index in range(len(Xd)):
                 Xd[index][-1] = fixed_column[index]
+
+        index = np.random.permutation(size)
 
         if n_dimension > 3:
             raise NotImplementedError('projection for a dimension bigger than 3 is not implemented yet!')
@@ -238,7 +239,8 @@ class NeoForceScheme(BaseEstimator):
                                                              n_dimension=n_dimension)
         else:
             Xd, self.projection_error_ = self._transform(Xd, index=index, total=total, inplace=inpalce,
-                                                         n_dimension=n_dimension)
+                                                         n_dimension=n_dimension, fixed_column=fixed_column)
+
         #################????????
         if (n_dimension == 2):
             min_x = min(Xd[:, 0])
@@ -317,7 +319,7 @@ class NeoForceScheme(BaseEstimator):
             Xd = self.scaler_data(Xd, scaler)
 
         self._fit(X)
-        return self.transform(Xd, **kwargs)
+        return self.transform(Xd, fixed_column=fixed_column, **kwargs)
 
     def fit(self, X, y=None):
         """Fit X into an embedded space.
