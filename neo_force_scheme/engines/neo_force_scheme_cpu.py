@@ -43,7 +43,7 @@ def pickle_save_matrix(filename, distance_matrix, size):
 
 
 @numba.njit(parallel=True, fastmath=True)
-def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric):
+def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric, fixed_column=None):
     size = len(projection)
     total = len(distance_matrix)
     error = 0
@@ -66,6 +66,10 @@ def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric):
             delta = (drn - dr2)
             error += math.fabs(delta)
 
+            # If fixing z axis, only move x and y
+            if fixed_column is not None:
+                n_dimension = n_dimension - 1
+
             for index in range(n_dimension):
                 projection[ins2][index] += learning_rate * delta * (temp_dist[index] / dr2)
 
@@ -73,7 +77,7 @@ def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric):
 
 
 @numba.njit(parallel=True, fastmath=True)
-def iteration(index, distance_matrix, projection, learning_rate, n_dimension, metric):
+def iteration(index, distance_matrix, projection, learning_rate, n_dimension, metric, fixed_column=None):
     size = len(projection)
     error = 0
 
@@ -84,7 +88,8 @@ def iteration(index, distance_matrix, projection, learning_rate, n_dimension, me
                       projection=projection,
                       learning_rate=learning_rate,
                       n_dimension=n_dimension,
-                      metric=metric)
+                      metric=metric,
+                      fixed_column=fixed_column)
 
     return error / size
 
