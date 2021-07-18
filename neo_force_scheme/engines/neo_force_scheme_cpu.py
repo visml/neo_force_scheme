@@ -1,5 +1,6 @@
 import math
 import pickle
+from typing import Optional, Tuple
 
 import numba
 import numpy as np
@@ -44,7 +45,8 @@ def pickle_save_matrix(filename, distance_matrix, size):
 
 
 @numba.njit(parallel=True, fastmath=True)
-def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric, force_projection_dimensions=None):
+def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric, force_projection_dimensions=None,
+         original_z_axis=None, z_axis_moving_range: Optional[Tuple[float, float]] = (0, 0)):
     size = len(projection)
     total = len(distance_matrix)
     error = 0
@@ -73,6 +75,11 @@ def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric, 
                 for index in force_projection_dimensions:
                     projection[ins2][index] += learning_rate * delta * (temp_dist[index] / dr2)
 
+                    z_axis_difference = projection[ins2][-1] + learning_rate * delta * (temp_dist[index] / dr2) - \
+                                        original_z_axis[ins2]
+                    if z_axis_moving_range[0] <= z_axis_difference <= z_axis_moving_range[1]:
+                        projection[ins2][-1] += learning_rate * delta * (temp_dist[index] / dr2)
+
             else:
                 for index in range(n_dimension):
                     projection[ins2][index] += learning_rate * delta * (temp_dist[index] / dr2)
@@ -81,7 +88,9 @@ def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric, 
 
 
 @numba.njit(parallel=True, fastmath=True)
-def iteration(index, distance_matrix, projection, learning_rate, n_dimension, metric, force_projection_dimensions=None):
+def iteration(index, distance_matrix, projection, learning_rate, n_dimension, metric,
+              force_projection_dimensions=None, original_z_axis=None,
+              z_axis_moving_range: Optional[Tuple[float, float]] = (0, 0)):
     size = len(projection)
     error = 0
 
@@ -93,7 +102,9 @@ def iteration(index, distance_matrix, projection, learning_rate, n_dimension, me
                       learning_rate=learning_rate,
                       n_dimension=n_dimension,
                       metric=metric,
-                      force_projection_dimensions=force_projection_dimensions)
+                      force_projection_dimensions=force_projection_dimensions,
+                      original_z_axis=original_z_axis,
+                      z_axis_moving_range=z_axis_moving_range)
 
     return error / size
 

@@ -156,20 +156,18 @@ class NeoForceScheme(BaseEstimator):
             self.embedding_, self.embedding_size_ = neo_force_scheme_cpu.read_distance_matrix(filename)
 
     def _fit(self, X,
-             scaler,
              drop_columns_from_dataset):
         X = preprocess_data(data=X, drop_columns_from_dataset=drop_columns_from_dataset)
-
-        if scaler is not None:
-            X = scale_dataset(X, scaler)
 
         self.embedding_ = neo_force_scheme_cpu.create_triangular_distance_matrix(X, self.metric)
         self.print(f'Distance matrix size in memory: ', round(getsizeof(self.embedding_) / 1024 / 1024, 2), 'MB')
 
 
-    def _transform(self, X, *, index, total, inplace, n_dimension: Optional[int] = 2, force_projection_dimensions=None):
+    def _transform(self, X, *, index, total, inplace, n_dimension: Optional[int] = 2, force_projection_dimensions=None,
+                   original_z_axis=None, z_axis_moving_range: Optional[Tuple[float, float]] = (0, 0)):
         # iterate until max_it or if the error does not change more than the tolerance
         error = math.inf
+
         for k in range(self.max_it):
             learning_rate = self.learning_rate0 * math.pow((1 - k / self.max_it), self.decay)
             new_error = neo_force_scheme_cpu.iteration(index=index,
@@ -178,7 +176,9 @@ class NeoForceScheme(BaseEstimator):
                                                        learning_rate=learning_rate,
                                                        n_dimension=n_dimension,
                                                        metric=self.metric,
-                                                       force_projection_dimensions=force_projection_dimensions)
+                                                       force_projection_dimensions=force_projection_dimensions,
+                                                       original_z_axis=original_z_axis,
+                                                       z_axis_moving_range=z_axis_moving_range)
 
             if math.fabs(new_error - error) < self.tolerance:
                 self.print(f'Error below tolerance {math.fabs(new_error - error)} in iteration {k}, breaking')
@@ -197,6 +197,7 @@ class NeoForceScheme(BaseEstimator):
             random_state: float = None,
             n_dimension: Optional[int] = 2,
             fix_column_to_z_projection_axis=None,
+            z_axis_moving_range: Optional[Tuple[float, float]] = (0, 0),
             X=None,
     ):
         """Transform X into the existing embedded space and return that
@@ -247,6 +248,9 @@ class NeoForceScheme(BaseEstimator):
         force_projection_dimensions = None
         if fix_column_to_z_projection_axis is not None:
             force_projection_dimensions = np.arange(n_dimension - 1)
+            Xd[:, n_dimension-1] = X[:, fix_column_to_z_projection_axis]
+
+        original_z_axis = np.copy(Xd[:, n_dimension-1])
 
         if n_dimension > 3:
             raise NotImplementedError('projection for a dimension bigger than 3 is not implemented yet!')
@@ -257,13 +261,13 @@ class NeoForceScheme(BaseEstimator):
         else:
             Xd, self.projection_error_ = self._transform(Xd, index=index, total=total, inplace=inplace,
                                                          n_dimension=n_dimension,
-                                                         force_projection_dimensions=force_projection_dimensions)
+                                                         force_projection_dimensions=force_projection_dimensions,
+                                                         original_z_axis=original_z_axis,
+                                                         z_axis_moving_range=z_axis_moving_range)
 
         Xmin = Xd.min(axis=0)
         Xd = Xd - Xmin
 
-        if fix_column_to_z_projection_axis is not None:
-            Xd[:, n_dimension-1] = X[:, fix_column_to_z_projection_axis]
         return Xd
 
     def _gpu_transform(self, X, *, index, total, inplace, n_dimension):
@@ -286,6 +290,7 @@ class NeoForceScheme(BaseEstimator):
                       fix_column_to_z_projection_axis: Optional[int] = None,
                       drop_columns_from_dataset: Optional[List[int]] = None,
                       scaler: Optional[Tuple[int, int]] = (0, 1),
+                      z_axis_moving_range: Optional[Tuple[float, float]] = (0, 0),
                       **kwargs):
         """
         Fit X into an embedded space and return that transformed
@@ -313,14 +318,19 @@ class NeoForceScheme(BaseEstimator):
             Embedding of the training data in low-dimensional space.
         """
         start = timer()
-        self._fit(X, scaler=scaler, drop_columns_from_dataset=drop_columns_from_dataset)
-        ret = self.transform(Xd, fix_column_to_z_projection_axis=fix_column_to_z_projection_axis, X=X, **kwargs)
+
+        # TODO: calculate moving range automatically based on the range of normalized z axis
+        if scaler is not None:
+            X = scale_dataset(X, scaler)
+
+        self._fit(X, drop_columns_from_dataset=drop_columns_from_dataset)
+        ret = self.transform(Xd, fix_column_to_z_projection_axis=fix_column_to_z_projection_axis,
+                             z_axis_moving_range=z_axis_moving_range, X=X, **kwargs)
         end = timer()
         self.print(f'Time elapsed: {timedelta(seconds=end - start)}')
         return ret
 
     def fit(self, X, y=None,
-            scaler=(0, 1),
             drop_columns_from_dataset=None):
         """Fit X into an embedded space.
         Parameters
@@ -331,7 +341,6 @@ class NeoForceScheme(BaseEstimator):
         y : Ignored
         """
         self._fit(X,
-                  scaler,
                   drop_columns_from_dataset)
         return self
 
