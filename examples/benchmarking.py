@@ -23,6 +23,7 @@ def datacollecting(n_dimension,
                    fixed_axis=None,
                    X_excp=None,
                    num_process_axis=None,
+                   z_axis_moving_range=None,
                    verbose=False):
     # read the distance matrix
     nfs = NeoForceScheme(verbose=verbose,
@@ -39,7 +40,8 @@ def datacollecting(n_dimension,
                                    n_dimension=n_dimension,
                                    fix_column_to_z_projection_axis=fixed_axis,
                                    drop_columns_from_dataset=X_excp,
-                                   scaler=scaler)
+                                   scaler=scaler,
+                                   z_axis_moving_range=z_axis_moving_range)
 
     if starting_projection == ProjectionMode.TSNE:
         starting_projection_name = 'TSNE'
@@ -58,7 +60,8 @@ def datacollecting(n_dimension,
              stress,
              fixed_axis if fixed_axis is not None else 'None',
              'NO' if fixed_axis in X_excp else 'YES',
-             'NO' if scaler is False else str(scaler)]
+             'NO' if scaler is False else str(scaler),
+             str(z_axis_moving_range)]
 
     if fig_path is not None:
         if not os.path.exists(fig_path):
@@ -92,7 +95,8 @@ def datacollecting(n_dimension,
                                    )])
         fig_name = str(n_dimension) + "d_" + str(learning_rate) + "_" + str(decay) + \
                    "_" + str(max_iteration) + "_" + starting_projection_name + "_" + \
-                   dataname + "_" + str(fixed_axis) + "_" + str(X_excp) + "_" + str(scaler)
+                   dataname + "_" + str(fixed_axis) + "_" + str(X_excp) + "_" + \
+                   str(scaler) + "_" + str(z_axis_moving_range)
 
         fig_path = fig_path + "/" + fig_name + ".png"
         fig.write_image(fig_path, engine="kaleido")
@@ -121,21 +125,23 @@ def loop_script(dataset,
                     for sp in start_project:
                         for scaler in scaler_list:
                             for _fixed_axis in fixed_axis:
-                                ret.append(
-                                    datacollecting(n_dimension=nd,
-                                                   learning_rate=lr,
-                                                   decay=dc,
-                                                   max_iteration=max_iter,
-                                                   starting_projection=sp,
-                                                   dataset=dataset,
-                                                   dataname=dataname,
-                                                   fig_path=fig_path,
-                                                   scaler=scaler,
-                                                   fixed_axis=_fixed_axis,
-                                                   X_excp=X_excp,
-                                                   num_process_axis=num_process_axis,
-                                                   verbose=verbose)
-                                )
+                                for z_axis_moving_range in z_axis_moving_range_list:
+                                    ret.append(
+                                        datacollecting(n_dimension=nd,
+                                                       learning_rate=lr,
+                                                       decay=dc,
+                                                       max_iteration=max_iter,
+                                                       starting_projection=sp,
+                                                       dataset=dataset,
+                                                       dataname=dataname,
+                                                       fig_path=fig_path,
+                                                       scaler=scaler,
+                                                       fixed_axis=_fixed_axis,
+                                                       X_excp=X_excp,
+                                                       num_process_axis=num_process_axis,
+                                                       z_axis_moving_range=z_axis_moving_range,
+                                                       verbose=verbose)
+                                    )
     return ret
 
 
@@ -143,7 +149,8 @@ if __name__ == '__main__':
     ##########################################
     output_file = 'data_collecting.csv'
     value_title = ['n_dimension', 'learning_rate', 'decay', 'max_iteration',
-                   'starting_projection', 'dataset', 'stress', 'fixed_axis', 'excluded_fixed_axis_from_dataset', 'scaler']
+                   'starting_projection', 'dataset', 'stress', 'fixed_axis',
+                   'excluded_fixed_axis_from_dataset', 'scaler', 'z_axis_moving_range']
     pd.DataFrame(columns=value_title).to_csv(output_file, header=True, index=False)
 
     ## for testing
@@ -159,6 +166,9 @@ if __name__ == '__main__':
     lr_list = [0.1, 0.3, 0.5]
     dc_list = [0.88, 0.93, 0.95, 0.97]
     maxi_list = [300, 500, 900]
+    z_axis_moving_range_list = [(0, 0), (-0.2, 0.2), (-0.5, 0.5)]
+    # ^^^ only works fine for scaler range (0, 1)
+    # (otherwise the range is too large so that figure will not be very different)
     start_project = [ProjectionMode.TSNE, ProjectionMode.PCA, ProjectionMode.RANDOM]
 
     ##########################################　iris
@@ -184,7 +194,7 @@ if __name__ == '__main__':
                     verbose=False)
     print('END DATASET')
     pd.DataFrame(r, columns=value_title).to_csv(output_file, mode='a', header=False, index=False)
-
+    
     ##########################################　mammals
     dataset = np.loadtxt('./datasets/mammals.data', delimiter=",")
     dataname = 'mammals'
@@ -221,8 +231,8 @@ if __name__ == '__main__':
                     maxi_list=maxi_list,
                     start_project=start_project,
                     fig_path=fig_path,
-                    fixed_axis=[None, 0],
-                    X_excp=[0],
+                    fixed_axis=[0],
+                    X_excp=[],
                     num_process_axis=None)
     print('END DATASET')
     pd.DataFrame(r, columns=value_title).to_csv(output_file, mode='a', header=False, index=False)
