@@ -1,8 +1,10 @@
 import math
 import pickle
 from typing import Optional, Tuple
+from scipy.stats import norm
 
 import numba
+
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 
@@ -43,10 +45,13 @@ def pickle_save_matrix(filename, distance_matrix, size):
     with open(filename, 'wb') as f:
         pickle.dump([distance_matrix, size], f)
 
-
 @numba.njit(parallel=True, fastmath=True)
-def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric, force_projection_dimensions=None,
-         original_z_axis=None, z_axis_moving_range: Optional[Tuple[float, float]] = (0, 0)):
+def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric,
+         force_projection_dimensions=None,
+         original_z_axis=None,
+         z_axis_moving_range: Optional[Tuple[float, float]] = (0, 0),
+         range_strict_limitation: Optional[bool] = True,
+         z_score: Optional[float] = 1):
     size = len(projection)
     total = len(distance_matrix)
     error = 0
@@ -70,6 +75,10 @@ def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric, 
             delta = (drn - dr2)
             error += math.fabs(delta)
 
+            inst_z = z_score
+            theta = (z_axis_moving_range[0] / inst_z)
+            possibility_to_ratio = (theta * math.sqrt(2 * math.pi))
+
             # If fixing z axis, only move x and y
             if force_projection_dimensions is not None:
                 for index in force_projection_dimensions:
@@ -77,8 +86,17 @@ def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric, 
 
                     z_axis_difference = projection[ins2][-1] + learning_rate * delta * (temp_dist[index] / dr2) - \
                                         original_z_axis[ins2]
-                    if z_axis_moving_range[0] <= z_axis_difference <= z_axis_moving_range[1]:
-                        projection[ins2][-1] += learning_rate * delta * (temp_dist[index] / dr2)
+
+                    if not z_axis_moving_range == (0, 0):
+                        if range_strict_limitation:
+                            if z_axis_moving_range[0] <= z_axis_difference <= z_axis_moving_range[1]:
+                                projection[ins2][-1] += learning_rate * delta * (temp_dist[index] / dr2)
+
+                        else:
+                            moving_to_ratio = (1 / (math.sqrt(2 * math.pi) * theta)) \
+                                              * math.exp(-((z_axis_difference) ** 2
+                                                           / (2 * (theta ** 2)))) * possibility_to_ratio
+                            projection[ins2][-1] += learning_rate * delta * (temp_dist[index] / dr2) * moving_to_ratio
 
             else:
                 for index in range(n_dimension):
@@ -90,7 +108,9 @@ def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric, 
 @numba.njit(parallel=True, fastmath=True)
 def iteration(index, distance_matrix, projection, learning_rate, n_dimension, metric,
               force_projection_dimensions=None, original_z_axis=None,
-              z_axis_moving_range: Optional[Tuple[float, float]] = (0, 0)):
+              z_axis_moving_range: Optional[Tuple[float, float]] = (0, 0),
+              z_score: Optional[float] = 1,
+              range_strict_limitation: Optional[bool] = True):
     size = len(projection)
     error = 0
 
@@ -104,7 +124,9 @@ def iteration(index, distance_matrix, projection, learning_rate, n_dimension, me
                       metric=metric,
                       force_projection_dimensions=force_projection_dimensions,
                       original_z_axis=original_z_axis,
-                      z_axis_moving_range=z_axis_moving_range)
+                      z_axis_moving_range=z_axis_moving_range,
+                      z_score=z_score,
+                      range_strict_limitation=range_strict_limitation)
 
     return error / size
 
