@@ -177,6 +177,7 @@ class NeoForceScheme(BaseEstimator):
             # which is not compatible with numba
         else:
             range_strict_limitation = True
+
         for k in range(self.max_it):
             learning_rate = self.learning_rate0 * math.pow((1 - k / self.max_it), self.decay)
             new_error = neo_force_scheme_cpu.iteration(index=index,
