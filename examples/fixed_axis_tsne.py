@@ -10,6 +10,12 @@ import numpy as np
 import sklearn.datasets as datasets
 from sklearn.preprocessing import MinMaxScaler
 
+"""
+Original T-SNE code used from: 
+https://github.com/heucoder/dimensionality_reduction_alo_codes/blob/master/codes/T-SNE/TSNE.py
+Authur: heucoder 
+Access time: Aug 2021
+"""
 
 def tsne(x, no_dims=2, perplexity=30.0, max_iter=1000,
          fix_column_to_z_projection_axis: Optional[int] = None,
