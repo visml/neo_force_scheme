@@ -51,7 +51,7 @@ def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric,
          original_z_axis=None,
          z_axis_moving_range: Optional[Tuple[float, float]] = (0, 0),
          range_strict_limitation: Optional[bool] = True,
-         z_score: Optional[float] = 1):
+         gaussian_function_z_score: Optional[float] = 1):
     size = len(projection)
     total = len(distance_matrix)
     error = 0
@@ -75,7 +75,7 @@ def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric,
             delta = (drn - dr2)
             error += math.fabs(delta)
 
-            inst_z = z_score
+            inst_z = gaussian_function_z_score
             theta = (z_axis_moving_range[0] / inst_z)
             possibility_to_ratio = (theta * math.sqrt(2 * math.pi))
 
@@ -109,7 +109,7 @@ def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric,
 def iteration(index, distance_matrix, projection, learning_rate, n_dimension, metric,
               force_projection_dimensions=None, original_z_axis=None,
               z_axis_moving_range: Optional[Tuple[float, float]] = (0, 0),
-              z_score: Optional[float] = 1,
+              gaussian_function_z_score: Optional[float] = 1,
               range_strict_limitation: Optional[bool] = True):
     size = len(projection)
     error = 0
@@ -125,7 +125,7 @@ def iteration(index, distance_matrix, projection, learning_rate, n_dimension, me
                       force_projection_dimensions=force_projection_dimensions,
                       original_z_axis=original_z_axis,
                       z_axis_moving_range=z_axis_moving_range,
-                      z_score=z_score,
+                      gaussian_function_z_score=gaussian_function_z_score,
                       range_strict_limitation=range_strict_limitation)
 
     return error / size

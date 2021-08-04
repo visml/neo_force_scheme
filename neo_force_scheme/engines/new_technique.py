@@ -25,6 +25,6 @@ def preprocess_data(data,
     return X
 
 
-def get_z_score(confidence_interval: Optional[float] = 0.99):
-    z_score = st.norm.ppf((1 - confidence_interval) / 2)
-    return z_score
+def get_gaussian_function_z_score(confidence_interval: Optional[float] = 0.99):
+    gaussian_function_z_score = st.norm.ppf((1 - confidence_interval) / 2)
+    return gaussian_function_z_score

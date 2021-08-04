@@ -1,3 +1,27 @@
+"""
+     Copyright 2020 heucoder
+     @ https://github.com/heucoder/dimensionality_reduction_alo_codes/blob/master/codes/T-SNE/TSNE.py
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+          http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ Access date: Aug 2021
+
+ Changes made from the original code:
+ 1. Translated the Chinese comments into English for developing convenience.
+ 2. Added parameters and relative features (mainly among line 150 - 200) in tsne() to adapt
+    the fixed axis technique.
+ 3. Added functions which will be used by fixed axis technique (mainly among 208 - 290).
+ 4. Changed the program running script into fixed axis technique example (mainly among 290 - 360).
+"""
 # coding:utf-8
 
 import math
@@ -10,12 +34,85 @@ import numpy as np
 import sklearn.datasets as datasets
 from sklearn.preprocessing import MinMaxScaler
 
-"""
-Original T-SNE code used from: 
-https://github.com/heucoder/dimensionality_reduction_alo_codes/blob/master/codes/T-SNE/TSNE.py
-Authur: heucoder 
-Access time: Aug 2021
-"""
+
+def cal_pairwise_dist(x):
+    '''Calculate the distance of a pairwise, x is a matrix
+    (a-b)^2 = a^2 + b^2 - 2*a*b
+    '''
+    sum_x = np.sum(np.square(x), 1)
+    dist = np.add(np.add(-2 * np.dot(x, x.T), sum_x).T, sum_x)
+    return dist
+
+
+def cal_perplexity(dist, idx=0, beta=1.0):
+    '''Calculate perplexity. D is distance vector
+    idx is the distance between a point and itself,
+    beta is Gaussian distribution parameter
+    '''
+    prob = np.exp(-dist * beta)
+
+    prob[idx] = 0
+    sum_prob = np.sum(prob)
+    if sum_prob < 1e-12:
+        prob = np.maximum(prob, 1e-12)
+        perp = -12
+    else:
+        perp = np.log(sum_prob) + beta * np.sum(dist * prob) / sum_prob
+        prob /= sum_prob
+
+    return perp, prob
+
+
+def seach_prob(x, tol=1e-5, perplexity=30.0):
+    '''Using binary research to find beta,
+    then calculate the prob of the pairwise
+    '''
+
+    # initialize parameters
+    print("Computing pairwise distances...")
+    (n, d) = x.shape
+    dist = cal_pairwise_dist(x)
+    dist[dist < 0] = 0
+    pair_prob = np.zeros((n, n))
+    beta = np.ones((n, 1))
+    # Here use the log value to make the later calculation easier
+    base_perp = np.log(perplexity)
+
+    for i in range(n):
+        if i % 500 == 0:
+            print("Computing pair_prob for point %s of %s ..." % (i, n))
+
+        betamin = -np.inf
+        betamax = np.inf
+        perp, this_prob = cal_perplexity(dist[i], i, beta[i])
+
+        # Using binary research to find the prob under the best sigma
+        perp_diff = perp - base_perp
+        tries = 0
+        while np.abs(perp_diff) > tol and tries < 50:
+            if perp_diff > 0:
+                betamin = beta[i].copy()
+                if betamax == np.inf or betamax == -np.inf:
+                    beta[i] = beta[i] * 2
+                else:
+                    beta[i] = (beta[i] + betamax) / 2
+            else:
+                betamax = beta[i].copy()
+                if betamin == np.inf or betamin == -np.inf:
+                    beta[i] = beta[i] / 2
+                else:
+                    beta[i] = (beta[i] + betamin) / 2
+
+            # update the value for perb and prob
+            perp, this_prob = cal_perplexity(dist[i], i, beta[i])
+            perp_diff = perp - base_perp
+            tries = tries + 1
+        # record the value for prob
+        pair_prob[i,] = this_prob
+    print("Mean value of sigma: ", np.mean(np.sqrt(1 / beta)))
+
+    return pair_prob
+
 
 def tsne(x, no_dims=2, perplexity=30.0, max_iter=1000,
          fix_column_to_z_projection_axis: Optional[int] = None,
@@ -99,16 +196,16 @@ def tsne(x, no_dims=2, perplexity=30.0, max_iter=1000,
             for index in force_projection_dimensions:
                 y[inst][index] = y[inst][index] + iy[inst][index]
                 y[inst][index] = y[inst][index] - np.tile(np.mean(y, 0), (n, 1))[inst][index]
-        # # Compute current value of cost function\
-        # if (iter + 1) % 100 == 0:
-        #     C = np.sum(P * np.log(P / Q))
-        #     print("Iteration ", (iter + 1), ": error is ", C)
-        #     if (iter+1) != 100:
-        #         ratio = C/oldC
-        #         print("ratio ", ratio)
-        #         if ratio >= 0.95:
-        #             break
-        #     oldC = C
+        # Compute current value of cost function\
+        if (iter + 1) % 100 == 0:
+            C = np.sum(P * np.log(P / Q))
+            print("Iteration ", (iter + 1), ": error is ", C)
+            if (iter+1) != 100:
+                ratio = C/oldC
+                print("ratio ", ratio)
+                if ratio >= 0.95:
+                    break
+            oldC = C
         # Stop lying about P-values
         if iter == 100:
             P = P / 4
@@ -120,85 +217,6 @@ def tsne(x, no_dims=2, perplexity=30.0, max_iter=1000,
 
 
 # Below are the functions used during tsne processing
-
-def cal_pairwise_dist(x):
-    '''Calculate the distance of a pairwise, x is a matrix
-    (a-b)^2 = a^2 + b^2 - 2*a*b
-    '''
-    sum_x = np.sum(np.square(x), 1)
-    dist = np.add(np.add(-2 * np.dot(x, x.T), sum_x).T, sum_x)
-    return dist
-
-
-def cal_perplexity(dist, idx=0, beta=1.0):
-    '''Calculate perplexity. D is distance vector
-    idx is the distance between a point and itself,
-    beta is Gaussian distribution parameter
-    '''
-    prob = np.exp(-dist * beta)
-
-    prob[idx] = 0
-    sum_prob = np.sum(prob)
-    if sum_prob < 1e-12:
-        prob = np.maximum(prob, 1e-12)
-        perp = -12
-    else:
-        perp = np.log(sum_prob) + beta * np.sum(dist * prob) / sum_prob
-        prob /= sum_prob
-
-    return perp, prob
-
-
-def seach_prob(x, tol=1e-5, perplexity=30.0):
-    '''Using binary research to find beta,
-    then calculate the prob of the pairwise
-    '''
-
-    # initialize parameters
-    print("Computing pairwise distances...")
-    (n, d) = x.shape
-    dist = cal_pairwise_dist(x)
-    dist[dist < 0] = 0
-    pair_prob = np.zeros((n, n))
-    beta = np.ones((n, 1))
-    # Here use the log value to make the later calculation easier
-    base_perp = np.log(perplexity)
-
-    for i in range(n):
-        if i % 500 == 0:
-            print("Computing pair_prob for point %s of %s ..." % (i, n))
-
-        betamin = -np.inf
-        betamax = np.inf
-        perp, this_prob = cal_perplexity(dist[i], i, beta[i])
-
-        # Using binary research to find the prob under the best sigma
-        perp_diff = perp - base_perp
-        tries = 0
-        while np.abs(perp_diff) > tol and tries < 50:
-            if perp_diff > 0:
-                betamin = beta[i].copy()
-                if betamax == np.inf or betamax == -np.inf:
-                    beta[i] = beta[i] * 2
-                else:
-                    beta[i] = (beta[i] + betamax) / 2
-            else:
-                betamax = beta[i].copy()
-                if betamin == np.inf or betamin == -np.inf:
-                    beta[i] = beta[i] / 2
-                else:
-                    beta[i] = (beta[i] + betamin) / 2
-
-            # update the value for perb and prob
-            perp, this_prob = cal_perplexity(dist[i], i, beta[i])
-            perp_diff = perp - base_perp
-            tries = tries + 1
-        # record the value for prob
-        pair_prob[i,] = this_prob
-    print("Mean value of sigma: ", np.mean(np.sqrt(1 / beta)))
-
-    return pair_prob
-
 
 def create_triangular_distance_matrix(
         data):
