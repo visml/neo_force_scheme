@@ -172,7 +172,7 @@ class NeoForceScheme(BaseEstimator):
         z_score = 1
         if confidence_interval < 1.0:
             range_strict_limitation = False
-            get_z_score(confidence_interval)
+            z_score = get_z_score(confidence_interval)
             # z_score is calculated separately because it is using scipy function
             # which is not compatible with numba
         else:
@@ -329,7 +329,7 @@ class NeoForceScheme(BaseEstimator):
         :param z_axis_moving_range: the range to which points are allowed to move on z axis.
             Default is (0, 0). This parameter will only be used when fix_column_to_z_projection_axis
             is not None.
-        :param confidence_interval: indicate the parameter which will be used to calculating the actual
+        :param confidence_interval: indicate the parameter which will be used to calculate the actual
             moving distance when z_axis_moving_range is not (0, 0). Default is 1, which means
             moving range is followed strictly. Otherwise the moving distance will be calculated
             using a Gaussian function.
