@@ -212,7 +212,7 @@ class NeoForceScheme(BaseEstimator):
             n_dimension: Optional[int] = 2,
             fix_column_to_z_projection_axis=None,
             z_axis_moving_range: Optional[Tuple[float, float]] = (0, 0),
-            confidence_interval: Optional[float] = 0.99,
+            confidence_interval: Optional[float] = 1,
             X=None,
     ):
         """Transform X into the existing embedded space and return that
