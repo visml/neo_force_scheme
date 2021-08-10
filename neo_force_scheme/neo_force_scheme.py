@@ -16,7 +16,7 @@ from sklearn.utils.validation import check_is_fitted
 from . import distances
 from .engines import neo_force_scheme_cpu
 from .engines.neo_force_scheme_cpu import scale_dataset
-from .engines.new_technique import preprocess_data
+from .engines.new_technique import preprocess_data, get_gaussian_function_z_score
 
 
 class ProjectionMode(Enum):
@@ -164,9 +164,19 @@ class NeoForceScheme(BaseEstimator):
 
 
     def _transform(self, X, *, index, total, inplace, n_dimension: Optional[int] = 2, force_projection_dimensions=None,
-                   original_z_axis=None, z_axis_moving_range: Optional[Tuple[float, float]] = (0, 0)):
+                   original_z_axis=None, z_axis_moving_range: Optional[Tuple[float, float]] = (0, 0),
+                   confidence_interval: Optional[float] = 1):
         # iterate until max_it or if the error does not change more than the tolerance
         error = math.inf
+
+        gaussian_function_z_score = 1
+        if confidence_interval < 1.0:
+            range_strict_limitation = False
+            gaussian_function_z_score = get_gaussian_function_z_score(confidence_interval)
+            # gaussian_function_z_score is calculated separately because it is using scipy function
+            # which is not compatible with numba
+        else:
+            range_strict_limitation = True
 
         for k in range(self.max_it):
             learning_rate = self.learning_rate0 * math.pow((1 - k / self.max_it), self.decay)
@@ -178,7 +188,11 @@ class NeoForceScheme(BaseEstimator):
                                                        metric=self.metric,
                                                        force_projection_dimensions=force_projection_dimensions,
                                                        original_z_axis=original_z_axis,
-                                                       z_axis_moving_range=z_axis_moving_range)
+                                                       z_axis_moving_range=z_axis_moving_range,
+                                                       range_strict_limitation=range_strict_limitation,
+                                                       gaussian_function_z_score=gaussian_function_z_score)
+                                                       # gaussian_function_z_score is passed in all situations,
+                                                       # but will only be used when range_strict_limitation == False
 
             if math.fabs(new_error - error) < self.tolerance:
                 self.print(f'Error below tolerance {math.fabs(new_error - error)} in iteration {k}, breaking')
@@ -198,6 +212,7 @@ class NeoForceScheme(BaseEstimator):
             n_dimension: Optional[int] = 2,
             fix_column_to_z_projection_axis=None,
             z_axis_moving_range: Optional[Tuple[float, float]] = (0, 0),
+            confidence_interval: Optional[float] = 1,
             X=None,
     ):
         """Transform X into the existing embedded space and return that
@@ -263,7 +278,8 @@ class NeoForceScheme(BaseEstimator):
                                                          n_dimension=n_dimension,
                                                          force_projection_dimensions=force_projection_dimensions,
                                                          original_z_axis=original_z_axis,
-                                                         z_axis_moving_range=z_axis_moving_range)
+                                                         z_axis_moving_range=z_axis_moving_range,
+                                                         confidence_interval=confidence_interval)
 
         Xmin = Xd.min(axis=0)
         Xd = Xd - Xmin
@@ -291,6 +307,7 @@ class NeoForceScheme(BaseEstimator):
                       drop_columns_from_dataset: Optional[List[int]] = None,
                       scaler: Optional[Tuple[int, int]] = (0, 1),
                       z_axis_moving_range: Optional[Tuple[float, float]] = (0, 0),
+                      confidence_interval: Optional[float] = 1,
                       **kwargs):
         """
         Fit X into an embedded space and return that transformed
@@ -302,10 +319,25 @@ class NeoForceScheme(BaseEstimator):
             Starting configuration of the projection result. By default it is ignored,
             and the starting projection is randomized using starting_projection_mode and random_state.
             If specified, this must match n_samples.
-        :param fix_column_to_z_projection_axis:
-        :param drop_columns_from_dataset:
-        :param Xd_exception_axes:
-        :param scaler:
+        :param fix_column_to_z_projection_axis: indicate the column which is used as z axis in 3d version
+            or y axis in 2d version of the ploted figure.
+        :param drop_columns_from_dataset: indicate the columns that you do not want to be
+            used for calculating distance matrix. Default is None.
+        :param scaler: the range to which all columns of the dataset should be scaled to.
+            Default is (0, 1). If the user does not want the dataset to be scaled, the input
+            should be None.
+        :param z_axis_moving_range: the range to which points are allowed to move on z axis.
+            Default is (0, 0). This parameter will only be used when fix_column_to_z_projection_axis
+            is not None.
+        :param confidence_interval: indicate the parameter which will be used to calculate the actual
+            moving distance when z_axis_moving_range is not (0, 0). By default it is 1, which means
+            moving range is followed strictly. Otherwise the moving distance will be calculated
+            using a Gaussian function.
+            For example, if the user sets the moving range to be (-1, 1),
+            0.9 means 90% of the area under the line of the Gaussian function is between -1 and 1,
+            while 0.99 means 99% of the area under the line is between -1 and 1.
+            In another word, the Gaussian figure with confidence_interval 0.99 has a sharper peak
+            (i.e, the figure around x = 0) than that of confidence_interval 0.9.
         :param kwargs:
             starting_projection_mode: one of [RANDOM], [PCA], [TSNE]
                 Specifies the starting values of the projection.
@@ -325,7 +357,8 @@ class NeoForceScheme(BaseEstimator):
 
         self._fit(X, drop_columns_from_dataset=drop_columns_from_dataset)
         ret = self.transform(Xd, fix_column_to_z_projection_axis=fix_column_to_z_projection_axis,
-                             z_axis_moving_range=z_axis_moving_range, X=X, **kwargs)
+                             z_axis_moving_range=z_axis_moving_range, X=X,
+                             confidence_interval=confidence_interval, **kwargs)
         end = timer()
         self.print(f'Time elapsed: {timedelta(seconds=end - start)}')
         return ret

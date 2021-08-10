@@ -1,4 +1,7 @@
+from typing import Optional
+
 import numpy as np
+import scipy.stats as st
 
 
 def preprocess_data(data,
@@ -20,3 +23,8 @@ def preprocess_data(data,
         X = np.delete(data, drop_columns_from_dataset, axis=1)
 
     return X
+
+
+def get_gaussian_function_z_score(confidence_interval: Optional[float] = 0.99):
+    gaussian_function_z_score = st.norm.ppf((1 - confidence_interval) / 2)
+    return gaussian_function_z_score

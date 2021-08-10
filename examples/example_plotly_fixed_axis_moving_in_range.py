@@ -9,13 +9,14 @@ from neo_force_scheme import NeoForceScheme, ProjectionMode
 
 #################################
 projection_n_dimensions = 3
-nfs = NeoForceScheme(metric="euclidean", verbose=True, learning_rate0=0.5,
-                     decay=0.95, max_it=100, cuda=False)
-starting_projection_mode = ProjectionMode.RANDOM
+nfs = NeoForceScheme(metric="euclidean", verbose=True, learning_rate0=0.2,
+                     decay=0.95, max_it=300, cuda=False)
+starting_projection_mode = ProjectionMode.TSNE
 fix_column_to_z_projection_axis = -1
 drop_columns_from_dataset = [-1]
 scaler = (0, 1)
 z_axis_moving_range = (-0.2, 0.2)
+confidence_interval = 0.9
 # by default z_axis_moving_range is (0, 0), which means not allowing any movement
 plot = True
 
@@ -36,7 +37,8 @@ projection = nfs.fit_transform(X=data,
                                fix_column_to_z_projection_axis=fix_column_to_z_projection_axis,
                                drop_columns_from_dataset=drop_columns_from_dataset,
                                scaler=scaler,
-                               z_axis_moving_range=z_axis_moving_range)
+                               z_axis_moving_range=z_axis_moving_range,
+                               confidence_interval=confidence_interval)
 error = nfs.projection_error_
 end = timer()
 
@@ -47,7 +49,7 @@ stress = nfs.score(projection)
 print('Kruskal stress {0}:'.format(stress))
 
 # save projection
-# np.savetxt(input_file + "_projection.txt", projection, delimiter=" ", fmt="%s")
+# np.savetxt("projection.txt", projection, delimiter=" ", fmt="%s")
 
 if plot:
     if projection_n_dimensions == 2:
