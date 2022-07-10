@@ -5,18 +5,18 @@ import numpy as np
 import pandas as pd
 from sklearn import datasets
 
-from neo_force_scheme import NeoForceScheme, ProjectionMode
+from neo_force_scheme.neo_force_scheme import NeoForceScheme, ProjectionMode
 
 #################################
 projection_n_dimensions = 3
 nfs = NeoForceScheme(metric="euclidean", verbose=True, learning_rate0=0.5,
                      decay=0.95, max_it=100, cuda=False)
 starting_projection_mode = ProjectionMode.RANDOM
-plot = True
+plot = False
 
 # data = np.loadtxt('./datasets/mammals.data', delimiter=",")
-data = pd.read_csv('./datasets/whr2019.csv', delimiter=",").values
-# data = np.concatenate((datasets.load_iris().data.T,[datasets.load_iris().target.T])).T
+# data = pd.read_csv('./datasets/whr2019.csv', delimiter=",").values
+data = np.concatenate((datasets.load_iris().data.T,[datasets.load_iris().target.T])).T
 # data = np.concatenate((datasets.load_breast_cancer().data.T,[datasets.load_breast_cancer().target.T])).T
 # data = np.tile(data, (100, 1)) # use this make the dataset 100x larger for performance test
 
