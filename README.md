@@ -108,15 +108,16 @@ More information can be found at [our documentation page](#)
 
 # CITATION
 ```bibtex
-@misc{christino_paulovich_4891820,
-  author       = {Paulovich, Fernando and Christino, Leonardo},
-  title        = {NeoForceScheme},
-  version      = {0.0.2},
+@software{qiaodan_luo_2022_7379477,
+  author       = {Qiaodan Luo and
+                  Leonardo Christino and
+                  Fernando Paulovich},
+  title        = {visml/neo\_force\_scheme: Eurovis Submission},
+  month        = nov,
+  year         = 2022,
   publisher    = {Zenodo},
-  month        = may,
-  year         = 2021,
-  doi          = {10.5281/zenodo.4891820},
-  url          = {http://dx.doi.org/10.5281/zenodo.4891820}
-    
+  version      = {0.0.3},
+  doi          = {10.5281/zenodo.7379477},
+  url          = {https://doi.org/10.5281/zenodo.7379477}
 }
 ```
