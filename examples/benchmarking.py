@@ -7,8 +7,8 @@ import pandas as pd
 import plotly.graph_objects as go
 from sklearn import datasets
 
-from neo_force_scheme import NeoForceScheme, ProjectionMode
-from neo_force_scheme.engines.neo_force_scheme_cpu import non_numeric_processor
+from neo_force_scheme.neo_force_scheme import NeoForceScheme, ProjectionMode
+from neo_force_scheme.neo_force_scheme.engines.neo_force_scheme_cpu import non_numeric_processor
 
 
 def datacollecting(n_dimension,

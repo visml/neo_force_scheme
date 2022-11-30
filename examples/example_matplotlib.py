@@ -6,7 +6,7 @@ import numpy as np
 from matplotlib.colors import ListedColormap
 from sklearn import datasets
 
-from neo_force_scheme import NeoForceScheme, ProjectionMode
+from neo_force_scheme.neo_force_scheme import NeoForceScheme, ProjectionMode
 
 #################################
 
