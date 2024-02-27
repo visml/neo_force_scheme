@@ -1,4 +1,7 @@
 local_storage/
+images/
+images.zip
+.DS_Store
 
 # Created by .ignore support plugin (hsz.mobi)
 ### Python template

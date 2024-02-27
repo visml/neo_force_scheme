@@ -15,7 +15,7 @@ def read_distance_matrix(filename: str) -> [float, np.array]:
     # calculating the size
     with open(filename) as fp:
         line = fp.readline()
-    tokens = line.strip().split(' ')
+    tokens = line.strip().split(" ")
 
     size = len(tokens)
     distance_matrix = np.zeros(int(size * (size + 1) / 2), dtype=np.float32)
@@ -26,7 +26,7 @@ def read_distance_matrix(filename: str) -> [float, np.array]:
     with open(filename) as fp:
         line = fp.readline()
         while line:
-            tokens = line.strip().split(' ')
+            tokens = line.strip().split(" ")
             for column in range(row, size):
                 distance_matrix[k] = float(tokens[column])
                 k = k + 1
@@ -36,22 +36,30 @@ def read_distance_matrix(filename: str) -> [float, np.array]:
 
 
 def pickle_load_matrix(filename):
-    with open(filename, 'rb') as f:
+    with open(filename, "rb") as f:
         data = pickle.load(f)
     return data[0], data[1]
 
 
 def pickle_save_matrix(filename, distance_matrix, size):
-    with open(filename, 'wb') as f:
+    with open(filename, "wb") as f:
         pickle.dump([distance_matrix, size], f)
 
-@numba.njit(parallel=True, fastmath=True)
-def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric,
-         force_projection_dimensions=None,
-         original_z_axis=None,
-         z_axis_moving_range: Optional[Tuple[float, float]] = (0, 0),
-         range_strict_limitation: Optional[bool] = True,
-         gaussian_function_z_score: Optional[float] = 1):
+
+@numba.njit(parallel=False, fastmath=True)
+def move(
+    ins1,
+    distance_matrix,
+    projection,
+    learning_rate,
+    n_dimension,
+    metric,
+    force_projection_dimensions=None,
+    original_z_axis=None,
+    z_axis_moving_range: Optional[Tuple[float, float]] = (0, 0),
+    range_strict_limitation: Optional[bool] = True,
+    gaussian_function_z_score: Optional[float] = 1,
+):
     size = len(projection)
     total = len(distance_matrix)
     error = 0
@@ -69,72 +77,104 @@ def move(ins1, distance_matrix, projection, learning_rate, n_dimension, metric,
             # getting te index in the distance matrix and getting the value
             r = (ins1 + ins2 - math.fabs(ins1 - ins2)) / 2  # min(i,j,k)
             s = (ins1 + ins2 + math.fabs(ins1 - ins2)) / 2  # max(i,j,k)
-            drn = distance_matrix[int(total - ((size - r) * (size - r + 1) / 2) + (s - r))]
+            drn = distance_matrix[
+                int(total - ((size - r) * (size - r + 1) / 2) + (s - r))
+            ]
 
             # calculate the movement
-            delta = (drn - dr2)
+            delta = drn - dr2
             error += math.fabs(delta)
 
             inst_z = gaussian_function_z_score
-            theta = (z_axis_moving_range[0] / inst_z)
-            possibility_to_ratio = (theta * math.sqrt(2 * math.pi))
+            theta = z_axis_moving_range[0] / inst_z
+            possibility_to_ratio = theta * math.sqrt(2 * math.pi)
 
             # If fixing z axis, only move x and y
             if force_projection_dimensions is not None:
                 for index in force_projection_dimensions:
-                    projection[ins2][index] += learning_rate * delta * (temp_dist[index] / dr2)
+                    projection[ins2][index] += (
+                        learning_rate * delta * (temp_dist[index] / dr2)
+                    )
 
-                    z_axis_difference = projection[ins2][-1] + learning_rate * delta * (temp_dist[index] / dr2) - \
-                                        original_z_axis[ins2]
+                    z_axis_difference = (
+                        projection[ins2][-1]
+                        + learning_rate * delta * (temp_dist[index] / dr2)
+                        - original_z_axis[ins2]
+                    )
 
                     if not z_axis_moving_range == (0, 0):
                         if range_strict_limitation:
-                            if z_axis_moving_range[0] <= z_axis_difference <= z_axis_moving_range[1]:
-                                projection[ins2][-1] += learning_rate * delta * (temp_dist[index] / dr2)
+                            if (
+                                z_axis_moving_range[0]
+                                <= z_axis_difference
+                                <= z_axis_moving_range[1]
+                            ):
+                                projection[ins2][-1] += (
+                                    learning_rate * delta * (temp_dist[index] / dr2)
+                                )
 
                         else:
-                            moving_to_ratio = (1 / (math.sqrt(2 * math.pi) * theta)) \
-                                              * math.exp(-((z_axis_difference) ** 2
-                                                           / (2 * (theta ** 2)))) * possibility_to_ratio
-                            projection[ins2][-1] += learning_rate * delta * (temp_dist[index] / dr2) * moving_to_ratio
+                            moving_to_ratio = (
+                                (1 / (math.sqrt(2 * math.pi) * theta))
+                                * math.exp(
+                                    -((z_axis_difference) ** 2 / (2 * (theta**2)))
+                                )
+                                * possibility_to_ratio
+                            )
+                            projection[ins2][-1] += (
+                                learning_rate
+                                * delta
+                                * (temp_dist[index] / dr2)
+                                * moving_to_ratio
+                            )
 
             else:
                 for index in range(n_dimension):
-                    projection[ins2][index] += learning_rate * delta * (temp_dist[index] / dr2)
+                    projection[ins2][index] += (
+                        learning_rate * delta * (temp_dist[index] / dr2)
+                    )
 
     return error / size
 
 
-@numba.njit(parallel=True, fastmath=True)
-def iteration(index, distance_matrix, projection, learning_rate, n_dimension, metric,
-              force_projection_dimensions=None, original_z_axis=None,
-              z_axis_moving_range: Optional[Tuple[float, float]] = (0, 0),
-              gaussian_function_z_score: Optional[float] = 1,
-              range_strict_limitation: Optional[bool] = True):
+@numba.njit(parallel=False, fastmath=True)
+def iteration(
+    index,
+    distance_matrix,
+    projection,
+    learning_rate,
+    n_dimension,
+    metric,
+    force_projection_dimensions=None,
+    original_z_axis=None,
+    z_axis_moving_range: Optional[Tuple[float, float]] = (0, 0),
+    gaussian_function_z_score: Optional[float] = 1,
+    range_strict_limitation: Optional[bool] = True,
+):
     size = len(projection)
     error = 0
 
     for i in numba.prange(size):
         ins1 = index[i]
-        error += move(ins1=ins1,
-                      distance_matrix=distance_matrix,
-                      projection=projection,
-                      learning_rate=learning_rate,
-                      n_dimension=n_dimension,
-                      metric=metric,
-                      force_projection_dimensions=force_projection_dimensions,
-                      original_z_axis=original_z_axis,
-                      z_axis_moving_range=z_axis_moving_range,
-                      gaussian_function_z_score=gaussian_function_z_score,
-                      range_strict_limitation=range_strict_limitation)
+        error += move(
+            ins1=ins1,
+            distance_matrix=distance_matrix,
+            projection=projection,
+            learning_rate=learning_rate,
+            n_dimension=n_dimension,
+            metric=metric,
+            force_projection_dimensions=force_projection_dimensions,
+            original_z_axis=original_z_axis,
+            z_axis_moving_range=z_axis_moving_range,
+            gaussian_function_z_score=gaussian_function_z_score,
+            range_strict_limitation=range_strict_limitation,
+        )
 
     return error / size
 
 
-@numba.njit(parallel=True, fastmath=True)
-def create_triangular_distance_matrix(
-        data,
-        metric):
+@numba.njit(parallel=False, fastmath=True)
+def create_triangular_distance_matrix(data, metric):
     distance_matrix = np.zeros(int((data.shape[0] + 1) * data.shape[0] / 2))
     size = len(data)
 
@@ -147,7 +187,7 @@ def create_triangular_distance_matrix(
     return distance_matrix
 
 
-@numba.njit(parallel=True)
+@numba.njit(parallel=False)
 def kruskal_stress(distance_matrix, projection, metric):
     size = len(projection)
     total = len(distance_matrix)
@@ -161,7 +201,9 @@ def kruskal_stress(distance_matrix, projection, metric):
 
             r = (i + j - math.fabs(i - j)) / 2  # min(i,j)
             s = (i + j + math.fabs(i - j)) / 2  # max(i,j)
-            drn = distance_matrix[int(total - ((size - r) * (size - r + 1) / 2) + (s - r))]
+            drn = distance_matrix[
+                int(total - ((size - r) * (size - r + 1) / 2) + (s - r))
+            ]
 
             num += (drn - dr2) * (drn - dr2)
             den += drn * drn
